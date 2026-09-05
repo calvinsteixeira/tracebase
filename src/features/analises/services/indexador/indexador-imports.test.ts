@@ -39,6 +39,22 @@ describe('indexarImports', () => {
       'src/lib/format-name.ts',
     ])
     expect(indice.simbolos).toEqual([])
+    expect(indice.relacoesImportacao).toHaveLength(5)
+
+    for (const relacao of indice.relacoesImportacao) {
+      const arquivoOrigem = indice.arquivos.find(
+        (arquivo) => arquivo.id === relacao.arquivoOrigemId,
+      )
+
+      expect(arquivoOrigem).toBeDefined()
+      expect(relacao.evidencia.caminhoArquivo).toBe(arquivoOrigem?.caminho)
+      expect(relacao.evidencia.inicio.linha).toBeGreaterThan(0)
+      expect(relacao.evidencia.inicio.coluna).toBeGreaterThan(0)
+      expect(relacao.evidencia.fim.linha).toBeGreaterThanOrEqual(
+        relacao.evidencia.inicio.linha,
+      )
+    }
+
     expect(indice.relacoesImportacao).toEqual([
       expect.objectContaining({
         tipo: 'importa',
@@ -76,6 +92,21 @@ describe('indexarImports', () => {
         },
       }),
     ])
+
+    const importacaoNaoResolvida = indice.relacoesImportacao.find(
+      (relacao) =>
+        relacao.destino.tipo === 'nao-resolvido' &&
+        relacao.destino.especificador === '../missing',
+    )
+
+    expect(importacaoNaoResolvida?.destino.tipo).toBe('nao-resolvido')
+    expect(
+      indice.relacoesImportacao.some(
+        (relacao) =>
+          relacao.destino.tipo === 'interno' &&
+          relacao.destino.caminhoArquivo === 'src/missing.ts',
+      ),
+    ).toBe(false)
   })
 
   it('rejeita arquivos duplicados no mesmo snapshot', () => {
