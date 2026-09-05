@@ -327,6 +327,20 @@ const mutation = useMutation({
 
 Para SSR, prefetch/hidratação ou alterações otimistas, preserve a separação entre funções de acesso a dados, configuração de query e componentes. Não coloque chamadas de API diretamente espalhadas pelo JSX. Nunca confie no cache do cliente para autorização ou segurança: o servidor deve validar todas as operações.
 
+## Banco de dados, persistência e migrations
+
+O PostgreSQL é o único banco de dados oficial do Tracebase. Durante o desenvolvimento, ele roda localmente em Docker; no ambiente publicado, o mesmo schema será hospedado no Supabase. Não introduza SQLite como uma segunda implementação de produção, cache de runtime ou fonte de verdade.
+
+- Mantenha o núcleo de indexação independente do banco. O domínio deve depender de contratos pequenos e orientados a casos de uso, como buscar um índice por repositório e commit ou salvar um índice, e não de um adaptador genérico para múltiplos bancos.
+- Implemente inicialmente apenas o adaptador PostgreSQL. Em testes unitários, prefira um repositório em memória; use PostgreSQL real para testes de integração que validam schema, queries e persistência.
+- O índice persistido por repositório e commit é o mecanismo inicial para reaproveitar uma análise já concluída. Não adicione SQLite, Redis ou outro cache distribuído sem uma necessidade comprovada.
+- Todas as mudanças de schema devem ser migrations SQL versionadas em `supabase/migrations/`, com nomes ordenáveis e descritivos. Uma migration aplicada não deve ser alterada; uma correção é feita em uma nova migration.
+- Nunca faça mudanças de schema diretamente no banco remoto pelo dashboard, editor SQL ou ferramentas manuais. Toda mudança precisa existir como migration revisável no Git e ser testada em uma base local limpa.
+- O ambiente local deve usar Docker somente para o PostgreSQL. O Next.js continua executando fora do container para preservar o hot reload.
+- Preserve comandos específicos para manutenção: `pnpm db:up`, `pnpm db:migrate`, `pnpm db:reset` e `pnpm dev:app`. Quando a infraestrutura existir, `pnpm dev` deve garantir que o banco local está disponível, esperar sua prontidão, aplicar apenas migrations pendentes e só então iniciar o Next.js. Se uma migration falhar, o servidor de desenvolvimento não deve iniciar.
+- `pnpm db:reset` é destrutivo somente para a base local: recria uma base vazia e reaplica todas as migrations. Nunca execute um reset contra um banco remoto sem autorização explícita.
+- Não execute migrations de produção durante builds ou previews da Vercel. Nesta fase, a aplicação de migrations no Supabase não será automatizada pela pipeline; ela será uma etapa controlada quando o ambiente hospedado for configurado. Bytebase não deve ser adicionado sem uma necessidade explícita de governança de mudanças de banco.
+
 ## Internacionalização
 
 Use `next-intl` como a única camada de resolução de textos da interface. O único locale do projeto neste momento é `pt-BR`; não crie `en.json`, rotas localizadas, seletor de idioma ou fallbacks para outro idioma até que isso seja solicitado. O locale padrão deve ser explícito e os catálogos devem ser tipados quando a configuração permitir.
@@ -447,4 +461,5 @@ Regras de teste:
 - O componente usa o design system e tokens existentes?
 - Loading, erro, vazio, sucesso, teclado e foco foram considerados?
 - Existem testes para o comportamento alterado?
+- Alterações de banco incluem uma migration versionada e validada contra uma base local limpa?
 - `pnpm lint`, `pnpm typecheck`, `pnpm test` e `pnpm build` passaram?
