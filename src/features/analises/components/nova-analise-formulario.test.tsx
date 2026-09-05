@@ -54,6 +54,7 @@ describe('NovaAnaliseFormulario', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Repositório elegível para análise')
     expect(await screen.findByRole('heading', { name: 'dono/repositorio' })).toBeInTheDocument()
     expect(screen.getByText('main')).toBeInTheDocument()
+    expect(screen.getByText('Commit considerado na branch padrão')).toBeInTheDocument()
     expect(screen.getByText('4 de até 250 arquivos')).toBeInTheDocument()
     expect(screen.getByText('4 kB de até 5 MB')).toBeInTheDocument()
     expect(screen.queryByText('Próximo passo')).not.toBeInTheDocument()

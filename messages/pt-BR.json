@@ -30,7 +30,7 @@
       "inconclusiva": "Não foi possível concluir a verificação"
     },
     "branch": "Branch padrão",
-    "commit": "Commit resolvido",
+    "commit": "Commit considerado na branch padrão",
     "arquivos": "Arquivos JavaScript/TypeScript",
     "arquivosValor": "{encontrado} de até {maximo} arquivos",
     "tamanhoTotal": "Tamanho total de código elegível",
