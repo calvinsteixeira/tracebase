@@ -1,0 +1,240 @@
+import { readFile, readdir } from 'node:fs/promises'
+import { existsSync, readFileSync as readFileSyncFromFs } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
+import { spawn, spawnSync } from 'node:child_process'
+import { setTimeout as esperar } from 'node:timers/promises'
+import pg from 'pg'
+
+const { Pool } = pg
+const raiz = resolve(fileURLToPath(new URL('..', import.meta.url)))
+const arquivoCompose = join(raiz, 'docker-compose.yml')
+const diretorioMigrations = join(raiz, 'supabase', 'migrations')
+const projetoCompose = ['compose', '-p', 'tracebase', '-f', arquivoCompose]
+const urlLocalPadrao = 'postgresql://tracebase:tracebase_local@localhost:5432/tracebase'
+
+function carregarAmbienteLocal() {
+  const ambiente = {}
+
+  for (const nomeArquivo of ['.env.local', '.env']) {
+    const caminho = join(raiz, nomeArquivo)
+
+    if (!existsSync(caminho)) continue
+
+    const linhas = readFileSyncFromFs(caminho, 'utf8').split(/\r?\n/)
+
+    for (const linha of linhas) {
+      const correspondencia = linha.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/)
+
+      if (!correspondencia) continue
+
+      const [, chave, valorBruto] = correspondencia
+      const valor = valorBruto.replace(/^(['"])(.*)\1$/, '$2')
+      ambiente[chave] = valor
+    }
+  }
+
+  return { ...ambiente, ...process.env }
+}
+
+function obterConfiguracao(ambiente) {
+  const url = ambiente.DATABASE_URL || urlLocalPadrao
+  const analisada = new URL(url)
+
+  return {
+    url,
+    banco: decodeURIComponent(analisada.pathname.slice(1)) || ambiente.POSTGRES_DB || 'tracebase',
+    usuario: decodeURIComponent(analisada.username) || ambiente.POSTGRES_USER || 'tracebase',
+  }
+}
+
+function garantirBancoLocal(configuracao) {
+  const analisada = new URL(configuracao.url)
+  const hostsLocais = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
+
+  if (
+    !['postgres:', 'postgresql:'].includes(analisada.protocol) ||
+    !hostsLocais.has(analisada.hostname) ||
+    configuracao.banco !== 'tracebase'
+  ) {
+    throw new Error('Operação permitida somente na base PostgreSQL local do Tracebase.')
+  }
+}
+
+function executar(comando, argumentos, opcoes = {}) {
+  const resultado = spawnSync(comando, argumentos, {
+    cwd: raiz,
+    stdio: 'inherit',
+    ...opcoes,
+  })
+
+  if (resultado.error) throw resultado.error
+  if (resultado.status !== 0) {
+    throw new Error(`O comando ${comando} falhou.`)
+  }
+}
+
+function executarSilencioso(comando, argumentos) {
+  const resultado = spawnSync(comando, argumentos, {
+    cwd: raiz,
+    stdio: 'ignore',
+  })
+
+  return resultado.status === 0
+}
+
+function executarCompose(argumentos, opcoes = {}) {
+  executar('docker', [...projetoCompose, ...argumentos], opcoes)
+}
+
+function composeEstaPronto(configuracao) {
+  return executarSilencioso('docker', [
+    ...projetoCompose,
+    'exec',
+    '-T',
+    'postgres',
+    'pg_isready',
+    '-U',
+    configuracao.usuario,
+    '-d',
+    configuracao.banco,
+  ])
+}
+
+async function subirPostgres(configuracao) {
+  garantirBancoLocal(configuracao)
+  executarCompose(['up', '-d', 'postgres'])
+}
+
+async function aguardarPostgres(configuracao) {
+  const limite = Date.now() + 60_000
+
+  while (Date.now() < limite) {
+    if (composeEstaPronto(configuracao)) return
+    await esperar(1_000)
+  }
+
+  throw new Error('O PostgreSQL local não ficou pronto dentro do tempo esperado.')
+}
+
+async function aplicarMigrations(configuracao) {
+  garantirBancoLocal(configuracao)
+  const pool = new Pool({ connectionString: configuracao.url })
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        nome TEXT PRIMARY KEY,
+        aplicada_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `)
+
+    const arquivos = (await readdir(diretorioMigrations))
+      .filter((arquivo) => arquivo.endsWith('.sql'))
+      .sort()
+
+    for (const arquivo of arquivos) {
+      const aplicada = await pool.query(
+        'SELECT 1 FROM schema_migrations WHERE nome = $1',
+        [arquivo],
+      )
+
+      if (aplicada.rowCount) {
+        console.log(`Migration já aplicada: ${arquivo}`)
+        continue
+      }
+
+      const sql = await readFile(join(diretorioMigrations, arquivo), 'utf8')
+      const cliente = await pool.connect()
+
+      try {
+        await cliente.query('BEGIN')
+        await cliente.query(sql)
+        await cliente.query('INSERT INTO schema_migrations (nome) VALUES ($1)', [arquivo])
+        await cliente.query('COMMIT')
+        console.log(`Migration aplicada: ${arquivo}`)
+      } catch (erro) {
+        await cliente.query('ROLLBACK')
+        throw erro
+      } finally {
+        cliente.release()
+      }
+    }
+  } finally {
+    await pool.end()
+  }
+}
+
+async function resetarBanco(configuracao) {
+  garantirBancoLocal(configuracao)
+  executarCompose(['down', '-v'])
+  await subirPostgres(configuracao)
+  await aguardarPostgres(configuracao)
+  await aplicarMigrations(configuracao)
+}
+
+function iniciarAplicacao() {
+  const processo = spawn('pnpm', ['dev:app'], {
+    cwd: raiz,
+    stdio: 'inherit',
+    env: carregarAmbienteLocal(),
+  })
+
+  processo.on('exit', (codigo, sinal) => {
+    if (sinal) {
+      process.kill(process.pid, sinal)
+      return
+    }
+
+    process.exitCode = codigo ?? 1
+  })
+}
+
+async function executarTestesIntegracao(configuracao) {
+  await resetarBanco(configuracao)
+  executar('pnpm', ['vitest', 'run', '--config', 'vitest.integration.config.ts'], {
+    env: { ...carregarAmbienteLocal(), DATABASE_URL: configuracao.url },
+  })
+}
+
+async function main() {
+  const ambiente = carregarAmbienteLocal()
+  const configuracao = obterConfiguracao(ambiente)
+  const comando = process.argv[2]
+
+  if (comando === 'up') {
+    await subirPostgres(configuracao)
+    return
+  }
+
+  if (comando === 'migrate') {
+    await aguardarPostgres(configuracao)
+    await aplicarMigrations(configuracao)
+    return
+  }
+
+  if (comando === 'reset') {
+    await resetarBanco(configuracao)
+    return
+  }
+
+  if (comando === 'dev') {
+    await subirPostgres(configuracao)
+    await aguardarPostgres(configuracao)
+    await aplicarMigrations(configuracao)
+    iniciarAplicacao()
+    return
+  }
+
+  if (comando === 'test:integration') {
+    await executarTestesIntegracao(configuracao)
+    return
+  }
+
+  throw new Error('Comando desconhecido. Use up, migrate, reset, dev ou test:integration.')
+}
+
+main().catch((erro) => {
+  console.error(erro instanceof Error ? erro.message : 'Falha na operação do PostgreSQL local.')
+  process.exitCode = 1
+})

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: tracebase-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tracebase}
+      POSTGRES_USER: ${POSTGRES_USER:-tracebase}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracebase_local}
+    ports:
+      - "5432:5432"
+    volumes:
+      - tracebase-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  tracebase-postgres-data:

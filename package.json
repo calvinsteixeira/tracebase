@@ -4,13 +4,18 @@
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/database.mjs dev",
+    "dev:app": "next dev",
     "build": "next build",
     "start": "next start",
+    "db:up": "node scripts/database.mjs up",
+    "db:migrate": "node scripts/database.mjs migrate",
+    "db:reset": "node scripts/database.mjs reset",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:integration": "node scripts/database.mjs test:integration"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -23,6 +28,7 @@
     "next": "16.3.4",
     "next-intl": "^4.14.2",
     "next-themes": "^0.4.6",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "shadcn": "^4.21.0",
@@ -36,6 +42,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.7",
     "@types/node": "20.19.43",
+    "@types/pg": "^8.23.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "^5.1.2",
