@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Qualidade e build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v5
+      - name: Preparar pnpm
+        uses: pnpm/action-setup@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+      - name: Verificar lint
+        run: pnpm lint
+      - name: Verificar tipos
+        run: pnpm typecheck
+      - name: Executar testes
+        run: pnpm test
+      - name: Gerar build de produção
+        run: pnpm build
