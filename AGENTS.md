@@ -54,6 +54,15 @@ Módulos de infraestrutura não devem importar páginas ou componentes. Uma feat
 
 Use aliases configurados no TypeScript, como `@/components`, `@/features` e `@/lib`, em vez de cadeias frágeis de imports relativos.
 
+### Fronteiras do domínio
+
+- Modele o domínio com a linguagem e as necessidades próprias do Tracebase; interfaces, tipos e estruturas internas pertencem ao produto, não a uma ferramenta.
+- Não deixe contratos, tipos ou objetos de bibliotecas e sistemas externos vazarem para o domínio. UI, persistência, GitHub, parser e IA não definem o modelo de domínio.
+- Mantenha clients, adapters e mappers nas bordas. Converta dados externos para contratos internos antes de eles entrarem no core.
+- Faça as dependências apontarem para o domínio; o domínio não deve depender de infraestrutura, interfaces de usuário ou fornecedores externos.
+- Quando uma capacidade puder ser expressa por um contrato interno, não acople o indexador a uma implementação, parser ou biblioteca específica.
+- Separe claramente domínio, aplicação/serviços e infraestrutura: o domínio descreve regras e conceitos; a aplicação orquestra casos de uso; a infraestrutura conecta recursos externos.
+
 ### Server Components e Client Components
 
 - Server Components são o padrão. Mantenha no servidor páginas, layouts, busca inicial de dados e composição estática sempre que possível.
