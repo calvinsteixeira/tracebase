@@ -19,6 +19,12 @@ export interface ArquivoFonte {
   conteudo: string
 }
 
+export interface ArquivoDoSnapshot {
+  caminho: string
+  blobSha: string
+  tamanhoBytes?: number
+}
+
 export interface ArquivoAnalisado {
   id: string
   caminho: string
@@ -74,4 +80,3 @@ export interface IndiceAnalise {
   simbolos: SimboloAnalisado[]
   relacoesImportacao: RelacaoImportacao[]
 }
-

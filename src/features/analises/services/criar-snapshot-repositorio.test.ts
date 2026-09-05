@@ -16,11 +16,11 @@ const resumoFonte = {
   referencia: 'main',
   commitSha: 'a'.repeat(40),
   arquivos: [
-    { caminho: 'src/app/page.tsx', tamanhoBytes: 1200 },
-    { caminho: 'src/lib/client.js', tamanhoBytes: 800 },
-    { caminho: 'README.md', tamanhoBytes: 400 },
-    { caminho: 'node_modules/pkg/index.js', tamanhoBytes: 400 },
-    { caminho: 'dist/index.js', tamanhoBytes: 400 },
+    { caminho: 'src/app/page.tsx', sha: 'b'.repeat(40), tamanhoBytes: 1200 },
+    { caminho: 'src/lib/client.js', sha: 'c'.repeat(40), tamanhoBytes: 800 },
+    { caminho: 'README.md', sha: 'd'.repeat(40), tamanhoBytes: 400 },
+    { caminho: 'node_modules/pkg/index.js', sha: 'e'.repeat(40), tamanhoBytes: 400 },
+    { caminho: 'dist/index.js', sha: 'f'.repeat(40), tamanhoBytes: 400 },
   ],
 }
 
@@ -51,11 +51,11 @@ describe('filtrarArquivosElegiveis', () => {
   it('mantém apenas JS/TS e ignora diretórios gerados', () => {
     expect(
       filtrarArquivosElegiveis([
-        { caminho: 'src/app/page.tsx' },
-        { caminho: 'src/lib/client.JS' },
-        { caminho: 'README.md' },
-        { caminho: 'node_modules/pkg/index.js' },
-        { caminho: '.next/server/app.js' },
+        { caminho: 'src/app/page.tsx', sha: '1'.repeat(40) },
+        { caminho: 'src/lib/client.JS', sha: '2'.repeat(40) },
+        { caminho: 'README.md', sha: '3'.repeat(40) },
+        { caminho: 'node_modules/pkg/index.js', sha: '4'.repeat(40) },
+        { caminho: '.next/server/app.js', sha: '5'.repeat(40) },
       ]).map((arquivo) => arquivo.caminho),
     ).toEqual(['src/app/page.tsx', 'src/lib/client.JS'])
   })
@@ -90,7 +90,7 @@ describe('verificarElegibilidadeRepositorio', () => {
   it('retorna não elegível quando não há arquivos JS/TS', () => {
     expect(
       avaliarElegibilidadeRepositorio(
-        [{ caminho: 'README.md', tamanhoBytes: 400 }],
+        [{ caminho: 'README.md', sha: '6'.repeat(40), tamanhoBytes: 400 }],
         LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO,
       ),
     ).toEqual({
@@ -104,6 +104,7 @@ describe('verificarElegibilidadeRepositorio', () => {
   it('informa o excesso do limite de quantidade de arquivos', () => {
     const arquivos = Array.from({ length: 251 }, (_, indice) => ({
       caminho: `src/arquivo-${indice}.ts`,
+      sha: `${indice}`.repeat(40),
       tamanhoBytes: 1,
     }))
 
@@ -123,7 +124,7 @@ describe('verificarElegibilidadeRepositorio', () => {
   it('informa o excesso do limite por arquivo', () => {
     expect(
       avaliarElegibilidadeRepositorio(
-        [{ caminho: 'src/grande.ts', tamanhoBytes: 524289 }],
+        [{ caminho: 'src/grande.ts', sha: '7'.repeat(40), tamanhoBytes: 524289 }],
         LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO,
       ),
     ).toMatchObject({
@@ -140,6 +141,7 @@ describe('verificarElegibilidadeRepositorio', () => {
   it('informa o excesso do limite total', () => {
     const arquivos = Array.from({ length: 11 }, (_, indice) => ({
       caminho: `src/arquivo-${indice}.ts`,
+      sha: `${indice}`.repeat(40),
       tamanhoBytes: 512 * 1024,
     }))
 
@@ -159,7 +161,7 @@ describe('verificarElegibilidadeRepositorio', () => {
   it('retorna verificação inconclusiva sem inventar tamanho desconhecido', () => {
     expect(
       avaliarElegibilidadeRepositorio(
-        [{ caminho: 'src/desconhecido.ts' }],
+        [{ caminho: 'src/desconhecido.ts', sha: '8'.repeat(40) }],
         LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO,
       ),
     ).toEqual({
