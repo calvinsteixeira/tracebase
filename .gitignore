@@ -79,7 +79,7 @@ web_modules/
 out
 
 # Documentos locais de planejamento
-/docs/quadro-entregas-mvp.html
+/quadro-entregas-mvp.html
 
 # Nuxt.js build / generate output
 .nuxt
