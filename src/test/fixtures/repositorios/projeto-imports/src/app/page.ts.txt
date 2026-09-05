@@ -1,0 +1,9 @@
+import { Card } from '../components/card'
+import { formatName } from '../lib/format-name'
+import { join } from 'node:path'
+import missing from '../missing'
+
+export function Page() {
+  return [Card, formatName('Tracebase'), join('src', 'app'), missing]
+}
+
