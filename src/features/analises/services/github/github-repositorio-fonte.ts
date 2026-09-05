@@ -60,7 +60,7 @@ export function criarFonteRepositorioGitHub(
       )
 
       if (arvore.truncated) {
-        throw new ErroFonteGitHub('LIMITE_EXCEDIDO')
+        throw new ErroFonteGitHub('VERIFICACAO_INCONCLUSIVA')
       }
 
       const arquivos = arvore.tree
@@ -85,7 +85,8 @@ export function criarFonteRepositorioGitHub(
 type CodigoErroFonte =
   | 'REPOSITORIO_PRIVADO'
   | 'REPOSITORIO_INDISPONIVEL'
-  | 'LIMITE_EXCEDIDO'
+  | 'VERIFICACAO_INCONCLUSIVA'
+  | 'LIMITE_GITHUB'
   | 'GITHUB_INDISPONIVEL'
 
 class ErroFonteGitHub extends Error {
@@ -114,7 +115,7 @@ async function requisitar<T>(
       }
 
       if (resposta.status === 403 || resposta.status === 429) {
-        throw new ErroFonteGitHub('LIMITE_EXCEDIDO')
+        throw new ErroFonteGitHub('LIMITE_GITHUB')
       }
 
       throw new ErroFonteGitHub('GITHUB_INDISPONIVEL')
@@ -139,8 +140,12 @@ export function mapearErroFonteGitHub(erro: unknown) {
     return 'REPOSITORIO_PRIVADO' as const
   }
 
-  if (erro.codigo === 'LIMITE_EXCEDIDO') {
-    return 'LIMITE_EXCEDIDO' as const
+  if (erro.codigo === 'VERIFICACAO_INCONCLUSIVA') {
+    return 'VERIFICACAO_INCONCLUSIVA' as const
+  }
+
+  if (erro.codigo === 'LIMITE_GITHUB') {
+    return 'LIMITE_GITHUB' as const
   }
 
   return erro.codigo

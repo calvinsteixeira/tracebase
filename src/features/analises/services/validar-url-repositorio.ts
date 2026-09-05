@@ -2,8 +2,8 @@ export type CodigoErroAnalise =
   | 'URL_INVALIDA'
   | 'REPOSITORIO_INDISPONIVEL'
   | 'REPOSITORIO_PRIVADO'
-  | 'SEM_ARQUIVOS_ELEGIVEIS'
-  | 'LIMITE_EXCEDIDO'
+  | 'VERIFICACAO_INCONCLUSIVA'
+  | 'LIMITE_GITHUB'
   | 'GITHUB_INDISPONIVEL'
 
 export class ErroAnaliseRepositorio extends Error {

@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { describe, expect, it, vi } from 'vitest'
 
 import messages from '../../../../messages/pt-BR.json'
+import { LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO } from '../services/politica-elegibilidade-repositorio'
 import { NovaAnaliseFormulario } from './nova-analise-formulario'
 
 function renderFormulario() {
@@ -20,7 +21,7 @@ function renderFormulario() {
 }
 
 describe('NovaAnaliseFormulario', () => {
-  it('envia a URL e exibe o resumo do snapshot', async () => {
+  it('envia a URL e exibe o resultado elegível', async () => {
     const user = userEvent.setup()
     vi.stubGlobal(
       'fetch',
@@ -33,7 +34,11 @@ describe('NovaAnaliseFormulario', () => {
               nome: 'repositorio',
             },
             snapshot: { commitSha: 'd'.repeat(40), referencia: 'main' },
+            status: 'elegivel',
             quantidadeArquivosElegiveis: 4,
+            tamanhoTotalBytes: 4096,
+            detalhe: null,
+            limites: LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO,
           }),
         ),
       ),
@@ -44,11 +49,13 @@ describe('NovaAnaliseFormulario', () => {
       screen.getByRole('textbox', { name: 'URL do repositório GitHub' }),
       'https://github.com/dono/repositorio',
     )
-    await user.click(screen.getByRole('button', { name: 'Analisar repositório' }))
+    await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
+    expect(screen.getByRole('status')).toHaveTextContent('Repositório elegível para análise')
     expect(await screen.findByRole('heading', { name: 'dono/repositorio' })).toBeInTheDocument()
     expect(screen.getByText('main')).toBeInTheDocument()
-    expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.getByText('4 de até 250 arquivos')).toBeInTheDocument()
+    expect(screen.getByText('4 kB de até 5 MB')).toBeInTheDocument()
     expect(screen.queryByText('Próximo passo')).not.toBeInTheDocument()
     expect(
       screen.queryByText('A indexação estrutural será entregue no P2.'),
@@ -79,7 +86,7 @@ describe('NovaAnaliseFormulario', () => {
     renderFormulario()
 
     await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), 'https://gitlab.com/dono/repositorio')
-    await user.click(screen.getByRole('button', { name: 'Analisar repositório' }))
+    await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Informe uma URL canônica de repositório público do GitHub.',
@@ -93,29 +100,80 @@ describe('NovaAnaliseFormulario', () => {
       'fetch',
       vi.fn().mockResolvedValue(
         new Response(
-          JSON.stringify({
-            erro: {
-              codigo: 'SEM_ARQUIVOS_ELEGIVEIS',
-              mensagem: 'mensagem interna não usada pelo cliente',
-            },
-          }),
-          { status: 422 },
-        ),
+        JSON.stringify({
+          status: 'nao-elegivel',
+          repositorio: {
+            url: 'https://github.com/dono/repositorio',
+            proprietario: 'dono',
+            nome: 'repositorio',
+          },
+          snapshot: { commitSha: 'd'.repeat(40), referencia: 'main' },
+          quantidadeArquivosElegiveis: 0,
+          tamanhoTotalBytes: 0,
+          detalhe: { criterio: 'sem-arquivos', encontrado: 0, maximo: null },
+          limites: LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO,
+        }),
+      ),
       ),
     )
     renderFormulario()
 
     expect(
       screen.getByText(
-        'Aceitamos apenas URLs canônicas de repositórios públicos do GitHub com arquivos JavaScript ou TypeScript (.js, .jsx, .ts ou .tsx).',
+        'O Tracebase verifica repositórios públicos e considera apenas arquivos JavaScript e TypeScript (.js, .jsx, .ts ou .tsx): até 250 arquivos, 512 kB por arquivo e 5 MB no total.',
       ),
     ).toBeInTheDocument()
     await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), 'https://github.com/dono/repositorio')
-    await user.click(screen.getByRole('button', { name: 'Analisar repositório' }))
+    await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Este repositório não parece ser um projeto JavaScript ou TypeScript: não encontramos arquivos .js, .jsx, .ts ou .tsx.',
+    expect(screen.getByText('Repositório não elegível para análise')).toHaveAttribute('role', 'alert')
+    expect(screen.getByText('Nenhum arquivo JavaScript ou TypeScript elegível foi encontrado.')).toBeInTheDocument()
+  })
+
+  it('mostra o valor encontrado e o limite quando a quantidade excede o permitido', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 'nao-elegivel',
+            repositorio: {
+              url: 'https://github.com/dono/repositorio',
+              proprietario: 'dono',
+              nome: 'repositorio',
+            },
+            snapshot: { commitSha: 'e'.repeat(40), referencia: 'main' },
+            quantidadeArquivosElegiveis: 251,
+            tamanhoTotalBytes: 251,
+            detalhe: {
+              criterio: 'quantidade-arquivos',
+              encontrado: 251,
+              maximo: 250,
+            },
+            limites: LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO,
+          }),
+        ),
+      ),
     )
+    renderFormulario()
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'URL do repositório GitHub' }),
+      'https://github.com/dono/repositorio',
+    )
+    await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
+
+    expect(await screen.findByText('Repositório não elegível para análise')).toHaveAttribute(
+      'role',
+      'alert',
+    )
+    expect(screen.getByText('251 de até 250 arquivos')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '251 arquivos JavaScript/TypeScript encontrados. Limite atual: 250 arquivos.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('desabilita o formulário durante a consulta', async () => {
@@ -133,9 +191,9 @@ describe('NovaAnaliseFormulario', () => {
     renderFormulario()
 
     await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), 'https://github.com/dono/repositorio')
-    await user.click(screen.getByRole('button', { name: 'Analisar repositório' }))
+    await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(screen.getByRole('button', { name: 'Consultando repositório...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Verificando repositório...' })).toBeDisabled()
     expect(screen.getByRole('status')).toBeInTheDocument()
 
     resolver(

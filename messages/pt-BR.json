@@ -6,28 +6,41 @@
   "home": {
     "eyebrow": "Análise de repositório",
     "titulo": "Entenda seu código a partir do GitHub",
-    "descricao": "Informe um repositório público para identificar o snapshot que será analisado.",
-    "orientacao": "Aceitamos apenas URLs canônicas de repositórios públicos do GitHub com arquivos JavaScript ou TypeScript (.js, .jsx, .ts ou .tsx).",
+    "descricao": "Informe um repositório público para verificar se ele está dentro dos limites do Tracebase.",
+    "orientacao": "O Tracebase verifica repositórios públicos e considera apenas arquivos JavaScript e TypeScript (.js, .jsx, .ts ou .tsx): até {quantidade} arquivos, {arquivo} por arquivo e {total} no total.",
     "urlLabel": "URL do repositório GitHub",
     "urlPlaceholder": "https://github.com/dono/repositorio",
-    "analisar": "Analisar repositório",
-    "analisando": "Consultando repositório...",
-    "carregando": "O Tracebase está consultando o repositório público no GitHub.",
-    "novo": "Analisar outro repositório",
+    "verificar": "Verificar repositório",
+    "verificando": "Verificando repositório...",
+    "carregando": "O Tracebase está verificando o repositório público no GitHub.",
+    "novo": "Verificar outro repositório",
     "erros": {
       "URL_INVALIDA": "Informe uma URL canônica de repositório público do GitHub.",
       "REPOSITORIO_INDISPONIVEL": "Não foi possível encontrar ou acessar esse repositório público.",
       "REPOSITORIO_PRIVADO": "Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.",
-      "SEM_ARQUIVOS_ELEGIVEIS": "Este repositório não parece ser um projeto JavaScript ou TypeScript: não encontramos arquivos .js, .jsx, .ts ou .tsx.",
-      "LIMITE_EXCEDIDO": "O repositório excede os limites atuais para uma análise.",
+      "VERIFICACAO_INCONCLUSIVA": "Não foi possível confirmar os dados desse repositório agora.",
       "GITHUB_INDISPONIVEL": "Não foi possível consultar o GitHub agora. Tente novamente mais tarde."
     }
   },
-  "resumo": {
-    "titulo": "Snapshot identificado",
-    "repositorio": "Repositório",
+  "elegibilidade": {
+    "status": {
+      "elegivel": "Repositório elegível para análise",
+      "nao-elegivel": "Repositório não elegível para análise",
+      "inconclusiva": "Não foi possível concluir a verificação"
+    },
     "branch": "Branch padrão",
     "commit": "Commit resolvido",
-    "arquivos": "Arquivos JavaScript/TypeScript elegíveis"
+    "arquivos": "Arquivos JavaScript/TypeScript",
+    "arquivosValor": "{encontrado} de até {maximo} arquivos",
+    "tamanhoTotal": "Tamanho total de código elegível",
+    "tamanhoTotalValor": "{encontrado} de até {maximo}",
+    "tamanhoDesconhecido": "Tamanho não confirmado; o limite total é {maximo}.",
+    "detalhes": {
+      "semArquivos": "Nenhum arquivo JavaScript ou TypeScript elegível foi encontrado.",
+      "quantidadeArquivos": "{encontrado} arquivos JavaScript/TypeScript encontrados. Limite atual: {maximo} arquivos.",
+      "tamanhoArquivo": "O arquivo {caminho} tem {encontrado}; o limite por arquivo é {maximo}.",
+      "tamanhoTotal": "Foram encontrados {encontrado} de código elegível; o limite total é {maximo}.",
+      "tamanhoDesconhecido": "Não foi possível confirmar o tamanho de todos os arquivos elegíveis. O limite total é {maximo}."
+    }
   }
 }

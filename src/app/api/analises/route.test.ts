@@ -25,7 +25,7 @@ describe('POST /api/analises', () => {
     expect(buscar).not.toHaveBeenCalled()
   })
 
-  it('devolve o contrato do snapshot sem incluir dados de autenticação', async () => {
+  it('devolve o contrato seguro de elegibilidade sem incluir dados de autenticação', async () => {
     const respostas = [
       {
         full_name: 'dono/repositorio',
@@ -36,7 +36,7 @@ describe('POST /api/analises', () => {
       { sha: 'f'.repeat(40) },
       {
         truncated: false,
-        tree: [{ path: 'src/index.ts', type: 'blob', size: 100 }],
+      tree: [{ path: 'src/index.ts', type: 'blob', size: 100 }],
       },
     ]
     const buscar = vi.fn<typeof fetch>(async () => {
@@ -54,6 +54,7 @@ describe('POST /api/analises', () => {
 
     expect(resposta.status).toBe(200)
     expect(await resposta.json()).toEqual({
+      status: 'elegivel',
       repositorio: {
         url: 'https://github.com/dono/repositorio',
         proprietario: 'dono',
@@ -61,6 +62,13 @@ describe('POST /api/analises', () => {
       },
       snapshot: { commitSha: 'f'.repeat(40), referencia: 'main' },
       quantidadeArquivosElegiveis: 1,
+      tamanhoTotalBytes: 100,
+      detalhe: null,
+      limites: {
+        quantidadeMaximaArquivosElegiveis: 250,
+        tamanhoMaximoArquivoBytes: 512 * 1024,
+        tamanhoMaximoTotalBytes: 5 * 1024 * 1024,
+      },
     })
     expect(JSON.stringify(buscar.mock.calls)).not.toContain('GITHUB_TOKEN')
   })

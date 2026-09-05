@@ -58,7 +58,7 @@ describe('criarFonteRepositorioGitHub', () => {
     )
   })
 
-  it('mapeia árvore truncada para limite excedido', async () => {
+  it('mapeia árvore truncada para verificação inconclusiva', async () => {
     const buscar = vi
       .fn()
       .mockResolvedValueOnce(
@@ -78,7 +78,7 @@ describe('criarFonteRepositorioGitHub', () => {
     const fonte = criarFonteRepositorioGitHub({ buscar })
 
     await expect(fonte.obterResumoRepositorio('dono', 'repositorio')).rejects.toSatisfy(
-      (erro: unknown) => mapearErroFonteGitHub(erro) === 'LIMITE_EXCEDIDO',
+      (erro: unknown) => mapearErroFonteGitHub(erro) === 'VERIFICACAO_INCONCLUSIVA',
     )
   })
 })

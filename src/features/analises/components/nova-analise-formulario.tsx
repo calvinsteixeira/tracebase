@@ -1,12 +1,16 @@
 'use client'
 
 import { useMutation } from '@tanstack/react-query'
-import { useTranslations } from 'next-intl'
+import { useFormatter, useTranslations } from 'next-intl'
 import { useState } from 'react'
 
-import type { CodigoErroAnalise, ResumoSnapshotRepositorio } from '../services/criar-snapshot-repositorio'
+import type {
+  CodigoErroAnalise,
+  ResultadoElegibilidadeRepositorio,
+} from '../services/criar-snapshot-repositorio'
+import { LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO } from '../services/politica-elegibilidade-repositorio'
 import { analisarUrlRepositorio } from '../services/validar-url-repositorio'
-import { ResumoRepositorio } from './resumo-repositorio'
+import { ResultadoElegibilidade } from './resumo-repositorio'
 
 interface ErroRespostaApi {
   erro?: {
@@ -22,14 +26,15 @@ class ErroAnaliseClient extends Error {
 
 export function NovaAnaliseFormulario() {
   const t = useTranslations('home')
+  const formatador = useFormatter()
   const [url, setUrl] = useState('')
   const [erroCodigo, setErroCodigo] = useState<CodigoErroAnalise | null>(null)
-  const [resumo, setResumo] = useState<ResumoSnapshotRepositorio | null>(null)
+  const [resultado, setResultado] = useState<ResultadoElegibilidadeRepositorio | null>(null)
   const mutation = useMutation({
-    mutationFn: analisarRepositorio,
+    mutationFn: verificarRepositorio,
     onSuccess: (novoResumo) => {
       setErroCodigo(null)
-      setResumo(novoResumo)
+      setResultado(novoResumo)
     },
     onError: (erro: ErroAnaliseClient) => setErroCodigo(erro.codigo),
   })
@@ -38,7 +43,7 @@ export function NovaAnaliseFormulario() {
 
   function enviarFormulario(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setResumo(null)
+    setResultado(null)
     setErroCodigo(null)
     mutation.mutate(url)
   }
@@ -72,7 +77,20 @@ export function NovaAnaliseFormulario() {
             aria-describedby="repositorio-orientacao"
             className="flex h-12 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
           />
-          <p id="repositorio-orientacao" className="text-sm text-muted-foreground">{t('orientacao')}</p>
+          <p id="repositorio-orientacao" className="text-sm text-muted-foreground">
+            {t('orientacao', {
+              quantidade: LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO.quantidadeMaximaArquivosElegiveis,
+              arquivo: formatador.number(
+                LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO.tamanhoMaximoArquivoBytes / 1024,
+                { style: 'unit', unit: 'kilobyte', unitDisplay: 'short' },
+              ),
+              total: formatador.number(
+                LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO.tamanhoMaximoTotalBytes /
+                  (1024 * 1024),
+                { style: 'unit', unit: 'megabyte', unitDisplay: 'short' },
+              ),
+            })}
+          </p>
         </div>
 
         <button
@@ -80,7 +98,7 @@ export function NovaAnaliseFormulario() {
           disabled={mutation.isPending}
           className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
         >
-          {mutation.isPending ? t('analisando') : t('analisar')}
+          {mutation.isPending ? t('verificando') : t('verificar')}
         </button>
 
         {mutation.isPending && (
@@ -96,12 +114,12 @@ export function NovaAnaliseFormulario() {
         )}
       </form>
 
-      {resumo && <ResumoRepositorio resumo={resumo} />}
+      {resultado && <ResultadoElegibilidade resultado={resultado} />}
     </section>
   )
 }
 
-async function analisarRepositorio(url: string): Promise<ResumoSnapshotRepositorio> {
+async function verificarRepositorio(url: string): Promise<ResultadoElegibilidadeRepositorio> {
   try {
     analisarUrlRepositorio(url)
   } catch (erro) {
@@ -118,7 +136,7 @@ async function analisarRepositorio(url: string): Promise<ResumoSnapshotRepositor
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: url.trim() }),
     })
-    const corpo = (await resposta.json()) as ResumoSnapshotRepositorio | ErroRespostaApi
+    const corpo = (await resposta.json()) as ResultadoElegibilidadeRepositorio | ErroRespostaApi
 
     if (!resposta.ok) {
       const codigo = 'erro' in corpo ? corpo.erro?.codigo : undefined
@@ -126,7 +144,7 @@ async function analisarRepositorio(url: string): Promise<ResumoSnapshotRepositor
       throw new ErroAnaliseClient(codigo ?? 'GITHUB_INDISPONIVEL')
     }
 
-    return corpo as ResumoSnapshotRepositorio
+    return corpo as ResultadoElegibilidadeRepositorio
   } catch (erro) {
     if (erro instanceof ErroAnaliseClient) {
       throw erro
