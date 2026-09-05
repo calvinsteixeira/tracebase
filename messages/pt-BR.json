@@ -19,6 +19,7 @@
       "REPOSITORIO_INDISPONIVEL": "Não foi possível encontrar ou acessar esse repositório público.",
       "REPOSITORIO_PRIVADO": "Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.",
       "VERIFICACAO_INCONCLUSIVA": "Não foi possível confirmar os dados desse repositório agora.",
+      "LIMITE_GITHUB": "O GitHub não permitiu concluir a verificação agora. Tente novamente mais tarde.",
       "GITHUB_INDISPONIVEL": "Não foi possível consultar o GitHub agora. Tente novamente mais tarde."
     }
   },
