@@ -1,17 +1,13 @@
-import { readFile, readdir } from 'node:fs/promises'
 import { existsSync, readFileSync as readFileSyncFromFs } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join, resolve } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { setTimeout as esperar } from 'node:timers/promises'
-import pg from 'pg'
-
-const { Pool } = pg
 const raiz = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const arquivoCompose = join(raiz, 'docker-compose.yml')
-const diretorioMigrations = join(raiz, 'supabase', 'migrations')
 const projetoCompose = ['compose', '-p', 'tracebase', '-f', arquivoCompose]
-const urlLocalPadrao = 'postgresql://tracebase:tracebase_local@localhost:5432/tracebase'
+const urlLocalPadrao =
+  'postgresql://tracebase:tracebase_local@localhost:5432/tracebase?sslmode=disable'
 
 function carregarAmbienteLocal() {
   const ambiente = {}
@@ -87,6 +83,20 @@ function executarCompose(argumentos, opcoes = {}) {
   executar('docker', [...projetoCompose, ...argumentos], opcoes)
 }
 
+function executarSupabase(argumentos, configuracao) {
+  executar('pnpm', ['exec', 'supabase', ...argumentos], {
+    env: { ...carregarAmbienteLocal(), DATABASE_URL: configuracao.url },
+  })
+}
+
+function obterUrlSupabase(configuracao) {
+  const url = new URL(configuracao.url)
+
+  if (!url.searchParams.has('sslmode')) url.searchParams.set('sslmode', 'disable')
+
+  return url.toString()
+}
+
 function composeEstaPronto(configuracao) {
   return executarSilencioso('docker', [
     ...projetoCompose,
@@ -117,52 +127,12 @@ async function aguardarPostgres(configuracao) {
   throw new Error('O PostgreSQL local não ficou pronto dentro do tempo esperado.')
 }
 
-async function aplicarMigrations(configuracao) {
+function aplicarMigrations(configuracao) {
   garantirBancoLocal(configuracao)
-  const pool = new Pool({ connectionString: configuracao.url })
-
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
-        nome TEXT PRIMARY KEY,
-        aplicada_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `)
-
-    const arquivos = (await readdir(diretorioMigrations))
-      .filter((arquivo) => arquivo.endsWith('.sql'))
-      .sort()
-
-    for (const arquivo of arquivos) {
-      const aplicada = await pool.query(
-        'SELECT 1 FROM schema_migrations WHERE nome = $1',
-        [arquivo],
-      )
-
-      if (aplicada.rowCount) {
-        console.log(`Migration já aplicada: ${arquivo}`)
-        continue
-      }
-
-      const sql = await readFile(join(diretorioMigrations, arquivo), 'utf8')
-      const cliente = await pool.connect()
-
-      try {
-        await cliente.query('BEGIN')
-        await cliente.query(sql)
-        await cliente.query('INSERT INTO schema_migrations (nome) VALUES ($1)', [arquivo])
-        await cliente.query('COMMIT')
-        console.log(`Migration aplicada: ${arquivo}`)
-      } catch (erro) {
-        await cliente.query('ROLLBACK')
-        throw erro
-      } finally {
-        cliente.release()
-      }
-    }
-  } finally {
-    await pool.end()
-  }
+  executarSupabase(
+    ['db', 'push', '--db-url', obterUrlSupabase(configuracao), '--skip-vault', '--yes'],
+    configuracao,
+  )
 }
 
 async function resetarBanco(configuracao) {
