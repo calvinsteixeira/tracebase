@@ -70,6 +70,37 @@ describe('NovaAnaliseFormulario', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('explica quando o repositório não possui arquivos JS ou TS', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            erro: {
+              codigo: 'SEM_ARQUIVOS_ELEGIVEIS',
+              mensagem: 'mensagem interna não usada pelo cliente',
+            },
+          }),
+          { status: 422 },
+        ),
+      ),
+    )
+    renderFormulario()
+
+    expect(
+      screen.getByText(
+        'Aceitamos apenas URLs canônicas de repositórios públicos do GitHub com arquivos JavaScript ou TypeScript (.js, .jsx, .ts ou .tsx).',
+      ),
+    ).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), 'https://github.com/dono/repositorio')
+    await user.click(screen.getByRole('button', { name: 'Analisar repositório' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Este repositório não parece ser um projeto JavaScript ou TypeScript: não encontramos arquivos .js, .jsx, .ts ou .tsx.',
+    )
+  })
+
   it('desabilita o formulário durante a consulta', async () => {
     const user = userEvent.setup()
     let resolver: (response: Response) => void = () => undefined

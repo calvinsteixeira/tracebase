@@ -69,7 +69,7 @@ export function criarSnapshotRepositorio(
       if (quantidadeArquivosElegiveis === 0) {
         throw new ErroAnaliseRepositorio(
           'SEM_ARQUIVOS_ELEGIVEIS',
-          'O repositório não possui arquivos JavaScript ou TypeScript elegíveis.',
+          'Este repositório não parece ser um projeto JavaScript ou TypeScript: não encontramos arquivos .js, .jsx, .ts ou .tsx.',
         )
       }
 

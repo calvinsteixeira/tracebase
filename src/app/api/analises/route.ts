@@ -65,7 +65,7 @@ function obterMensagemErro(codigo: ReturnType<typeof obterCodigoErro>) {
     REPOSITORIO_PRIVADO:
       'Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.',
     SEM_ARQUIVOS_ELEGIVEIS:
-      'O repositório não possui arquivos JavaScript ou TypeScript elegíveis.',
+      'Este repositório não parece ser um projeto JavaScript ou TypeScript: não encontramos arquivos .js, .jsx, .ts ou .tsx.',
     LIMITE_EXCEDIDO:
       'O repositório excede os limites atuais para uma análise.',
     GITHUB_INDISPONIVEL:
