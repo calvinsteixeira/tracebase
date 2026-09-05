@@ -15,6 +15,8 @@ Este é o arquivo canônico de instruções do projeto. Ele fica na raiz e não 
 - Antes de concluir uma alteração, execute `pnpm lint`, `pnpm typecheck`, `pnpm test` e `pnpm build`.
 - Ao alterar componentes, páginas ou lógica de domínio, adicione ou atualize testes.
 - Mensagens de commit devem ser objetivas, em português e seguir Conventional Commits, por exemplo `feat: adicionar filtro de projetos` ou `fix: corrigir cache da lista`.
+- O título de todo Pull Request/MR deve ser em português, seguir o mesmo padrão `feat:` ou `fix:` e conter uma descrição breve da entrega, por exemplo `feat: adicionar filtro de projetos`.
+- A descrição do Pull Request/MR deve resumir a entrega e listar as validações executadas; não use títulos genéricos como `update`, `changes` ou `inicial`.
 - Não inclua segredos, tokens, credenciais, dados pessoais ou arquivos `.env` nos commits.
 - Preserve alterações existentes de outras pessoas. Não use comandos destrutivos como `git reset --hard` ou `git checkout --` sem autorização explícita.
 - Ao finalizar, descreva o que mudou, as validações executadas e qualquer limitação restante.
