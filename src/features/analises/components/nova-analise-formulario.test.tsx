@@ -126,7 +126,9 @@ describe('NovaAnaliseFormulario', () => {
     await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), 'https://github.com/dono/repositorio')
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(screen.getByText('Repositório não elegível para análise')).toHaveAttribute('role', 'alert')
+    expect(screen.getAllByRole('status')[0]).toHaveTextContent(
+      'Repositório não elegível para análise',
+    )
     expect(screen.getByText('Nenhum arquivo JavaScript ou TypeScript elegível foi encontrado.')).toBeInTheDocument()
   })
 
@@ -164,9 +166,8 @@ describe('NovaAnaliseFormulario', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(await screen.findByText('Repositório não elegível para análise')).toHaveAttribute(
-      'role',
-      'alert',
+    expect(screen.getAllByRole('status')[0]).toHaveTextContent(
+      'Repositório não elegível para análise',
     )
     expect(screen.getByText('251 de até 250 arquivos')).toBeInTheDocument()
     expect(

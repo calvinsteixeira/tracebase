@@ -1,6 +1,7 @@
 'use client'
 
 import { useFormatter, useTranslations } from 'next-intl'
+import { CheckCircle2, CircleAlert, Info } from 'lucide-react'
 
 import type { ResultadoElegibilidadeRepositorio } from '../services/criar-snapshot-repositorio'
 
@@ -11,6 +12,7 @@ interface ResultadoElegibilidadeProps {
 export function ResultadoElegibilidade({ resultado }: ResultadoElegibilidadeProps) {
   const t = useTranslations('elegibilidade')
   const formatador = useFormatter()
+  const visual = obterVisualStatus(resultado.status)
 
   const formatarTamanho = (bytes: number) => {
     if (bytes >= 1024 * 1024) {
@@ -60,16 +62,18 @@ export function ResultadoElegibilidade({ resultado }: ResultadoElegibilidadeProp
   return (
     <section
       aria-labelledby="resultado-elegibilidade-titulo"
-      className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm"
+      className={`mt-8 rounded-2xl border bg-card p-6 shadow-sm ${visual.container}`}
     >
       <div className="mb-6">
-        <p
-          role={resultado.status === 'nao-elegivel' ? 'alert' : 'status'}
-          aria-live={resultado.status === 'nao-elegivel' ? 'assertive' : 'polite'}
-          className="text-sm font-semibold text-primary"
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className={`flex items-center gap-3 rounded-xl border p-4 ${visual.statusContainer}`}
         >
-          {statusLabel}
-        </p>
+          <visual.IconeStatus aria-hidden="true" className={`size-5 shrink-0 ${visual.statusText}`} />
+          <p className={`text-sm font-semibold ${visual.statusText}`}>{statusLabel}</p>
+        </div>
         <h2 id="resultado-elegibilidade-titulo" className="mt-2 text-2xl font-semibold tracking-tight">
           {resultado.repositorio.proprietario}/{resultado.repositorio.nome}
         </h2>
@@ -110,13 +114,44 @@ export function ResultadoElegibilidade({ resultado }: ResultadoElegibilidadeProp
 
       {mensagemDetalhe && (
         <div
-          role={resultado.status === 'inconclusiva' ? 'status' : 'alert'}
-          aria-live={resultado.status === 'inconclusiva' ? 'polite' : 'assertive'}
-          className="mt-6 rounded-xl border border-border bg-muted/40 p-4 text-sm"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className={`mt-6 rounded-xl border p-4 text-sm ${visual.detail}`}
         >
           {mensagemDetalhe}
         </div>
       )}
     </section>
   )
+}
+
+function obterVisualStatus(status: ResultadoElegibilidadeRepositorio['status']) {
+  if (status === 'elegivel') {
+    return {
+      IconeStatus: CheckCircle2,
+      container: 'border-primary/40',
+      statusContainer: 'border-primary/30 bg-primary/10',
+      statusText: 'text-primary',
+      detail: 'border-primary/30 bg-primary/10 text-primary',
+    }
+  }
+
+  if (status === 'nao-elegivel') {
+    return {
+      IconeStatus: CircleAlert,
+      container: 'border-warning/40',
+      statusContainer: 'border-warning/30 bg-warning/10',
+      statusText: 'text-warning',
+      detail: 'border-warning/30 bg-warning/10 text-warning',
+    }
+  }
+
+  return {
+    IconeStatus: Info,
+    container: 'border-border',
+    statusContainer: 'border-border bg-muted/50',
+    statusText: 'text-muted-foreground',
+    detail: 'border-border bg-muted/50 text-muted-foreground',
+  }
 }
