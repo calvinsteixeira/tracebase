@@ -49,6 +49,15 @@ describe('NovaAnaliseFormulario', () => {
     expect(await screen.findByRole('heading', { name: 'dono/repositorio' })).toBeInTheDocument()
     expect(screen.getByText('main')).toBeInTheDocument()
     expect(screen.getByText('4')).toBeInTheDocument()
+    expect(screen.queryByText('Próximo passo')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('A indexação estrutural será entregue no P2.'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'O snapshot está associado a este commit para manter a análise rastreável.',
+      ),
+    ).not.toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
       '/api/analises',
       expect.objectContaining({ method: 'POST' }),

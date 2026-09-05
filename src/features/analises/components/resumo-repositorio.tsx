@@ -37,12 +37,6 @@ export function ResumoRepositorio({ resumo }: ResumoRepositorioProps) {
           <dd className="mt-1 break-all font-mono text-sm">{resumo.snapshot.commitSha}</dd>
         </div>
       </dl>
-
-      <div className="mt-6 border-t border-border pt-5">
-        <p className="text-sm font-medium">{t('proximoPasso')}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{t('proximoPassoDescricao')}</p>
-        <p className="mt-3 text-xs text-muted-foreground">{t('idSnapshot')}</p>
-      </div>
     </section>
   )
 }

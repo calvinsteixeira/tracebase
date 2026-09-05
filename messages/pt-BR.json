@@ -28,9 +28,6 @@
     "repositorio": "Repositório",
     "branch": "Branch padrão",
     "commit": "Commit resolvido",
-    "arquivos": "Arquivos JavaScript/TypeScript elegíveis",
-    "proximoPasso": "Próximo passo",
-    "proximoPassoDescricao": "A indexação estrutural será entregue no P2.",
-    "idSnapshot": "O snapshot está associado a este commit para manter a análise rastreável."
+    "arquivos": "Arquivos JavaScript/TypeScript elegíveis"
   }
 }
