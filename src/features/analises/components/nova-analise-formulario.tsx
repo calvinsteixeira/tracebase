@@ -24,9 +24,13 @@ export function NovaAnaliseFormulario() {
   const t = useTranslations('home')
   const [url, setUrl] = useState('')
   const [erroCodigo, setErroCodigo] = useState<CodigoErroAnalise | null>(null)
+  const [resumo, setResumo] = useState<ResumoSnapshotRepositorio | null>(null)
   const mutation = useMutation({
     mutationFn: analisarRepositorio,
-    onSuccess: () => setErroCodigo(null),
+    onSuccess: (novoResumo) => {
+      setErroCodigo(null)
+      setResumo(novoResumo)
+    },
     onError: (erro: ErroAnaliseClient) => setErroCodigo(erro.codigo),
   })
 
@@ -34,13 +38,14 @@ export function NovaAnaliseFormulario() {
 
   function enviarFormulario(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setResumo(null)
+    setErroCodigo(null)
     mutation.mutate(url)
   }
 
   function alterarUrl(valor: string) {
     setUrl(valor)
     setErroCodigo(null)
-    mutation.reset()
   }
 
   return (
@@ -91,7 +96,7 @@ export function NovaAnaliseFormulario() {
         )}
       </form>
 
-      {mutation.data && <ResumoRepositorio resumo={mutation.data} />}
+      {resumo && <ResumoRepositorio resumo={resumo} />}
     </section>
   )
 }

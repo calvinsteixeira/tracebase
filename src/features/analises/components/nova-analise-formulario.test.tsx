@@ -58,6 +58,14 @@ describe('NovaAnaliseFormulario', () => {
         'O snapshot está associado a este commit para manter a análise rastreável.',
       ),
     ).not.toBeInTheDocument()
+
+    await user.clear(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'URL do repositório GitHub' }),
+      'https://github.com/dono/outro-repositorio',
+    )
+
+    expect(screen.getByRole('heading', { name: 'dono/repositorio' })).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
       '/api/analises',
       expect.objectContaining({ method: 'POST' }),
