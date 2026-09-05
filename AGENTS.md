@@ -331,6 +331,14 @@ Para SSR, prefetch/hidratação ou alterações otimistas, preserve a separaçã
 
 Use `next-intl` como a única camada de resolução de textos da interface. O único locale do projeto neste momento é `pt-BR`; não crie `en.json`, rotas localizadas, seletor de idioma ou fallbacks para outro idioma até que isso seja solicitado. O locale padrão deve ser explícito e os catálogos devem ser tipados quando a configuração permitir.
 
+### Conteúdo do produto e planejamento interno
+
+- Separe rigorosamente o conteúdo destinado à pessoa usuária do conteúdo de planejamento, implementação e revisão. Pacotes como `P0` e `P1`, roadmap, tarefas, PRs, sprints, próximos pacotes, decisões pendentes e instruções para agentes pertencem à documentação interna, nunca à interface do produto.
+- Antes de incluir qualquer texto visível, metadata, erro, estado vazio, loading, sucesso ou label acessível, pergunte: “isso ajuda a pessoa usuária a usar e entender o Tracebase agora?”. Se a resposta for não, o texto deve ficar em documentação, comentário, teste ou descrição de PR.
+- Não exponha na interface status de implementação, promessas de funcionalidades futuras, nomes de pacotes, dependências entre entregas ou justificativas técnicas. Por exemplo, não exibir “será entregue no P2” ou “este snapshot existe para o próximo passo”.
+- Ao transformar uma documentação de planejamento em implementação, use somente os requisitos de comportamento e experiência do produto. Não copie para a UI textos que servem apenas para orientar desenvolvimento.
+- Em componentes alterados por esse tipo de decisão, adicione testes que garantam a ausência de textos internos relevantes, além de testar o conteúdo que deve ser percebido pela pessoa usuária.
+
 Centralize mensagens no catálogo atual, com objetos aninhados por tela ou domínio:
 
 ```text
