@@ -148,6 +148,51 @@ components/projeto-card/
 
 Prefira exports nomeados. Use `default export` somente quando for uma página, layout ou módulo em que o framework exija esse formato.
 
+### Prop drilling e compartilhamento local
+
+Não encaminhe a mesma prop por múltiplos níveis quando os componentes intermediários não a utilizam. Primeiro prefira composição; quando somente uma subárvore precisar de um valor, use Contexto local. Zustand é reservado para estado global de cliente, não para contornar qualquer prop drilling.
+
+Evite:
+
+```tsx
+<Pagina usuario={usuario}>
+  <Cabecalho usuario={usuario}>
+    <Menu usuario={usuario} />
+  </Cabecalho>
+</Pagina>
+```
+
+Prefira composição quando o componente que precisa do dado pode ser passado diretamente:
+
+```tsx
+<Pagina>
+  <Cabecalho>
+    <Menu usuario={usuario} />
+  </Cabecalho>
+</Pagina>
+```
+
+Quando várias partes da mesma subárvore precisarem do dado, crie um Contexto restrito à feature:
+
+```tsx
+const UsuarioContext = createContext<Usuario | null>(null)
+
+export function AreaDoUsuario({ children, usuario }: {
+  children: React.ReactNode
+  usuario: Usuario
+}) {
+  return <UsuarioContext value={usuario}>{children}</UsuarioContext>
+}
+
+export function NomeDoUsuario() {
+  const usuario = useContext(UsuarioContext)
+
+  if (!usuario) throw new Error('NomeDoUsuario deve estar dentro de AreaDoUsuario')
+
+  return <span>{usuario.nome}</span>
+}
+```
+
 ## Estado e fluxo de dados
 
 Antes de criar estado, identifique a fonte correta:
@@ -273,29 +318,37 @@ Para SSR, prefetch/hidratação ou alterações otimistas, preserve a separaçã
 
 ## Internacionalização
 
-Use `next-intl` como a única camada de resolução de textos da interface. O locale padrão deve ser explícito e os catálogos devem ser tipados quando a configuração permitir.
+Use `next-intl` como a única camada de resolução de textos da interface. O único locale do projeto neste momento é `pt-BR`; não crie `en.json`, rotas localizadas, seletor de idioma ou fallbacks para outro idioma até que isso seja solicitado. O locale padrão deve ser explícito e os catálogos devem ser tipados quando a configuração permitir.
 
-Centralize mensagens por domínio:
+Centralize mensagens no catálogo atual, com objetos aninhados por tela ou domínio:
 
 ```text
 messages/
-├── pt-BR.json
-└── en.json
+└── pt-BR.json
 ```
 
-Exemplo de uso:
+Exemplo de catálogo e uso da chave `home.titulo`:
+
+```json
+{
+  "home": {
+    "titulo": "Acompanhe seus rastreamentos"
+  }
+}
+```
 
 ```tsx
-const t = useTranslations('Projetos')
+const t = useTranslations('home')
 
 return <h1>{t('titulo')}</h1>
 ```
+
+O namespace `home` mais a chave `titulo` resolve `home.titulo`; preserve essa estrutura em vez de criar chaves planas ou acessar o JSON diretamente no componente.
 
 Regras:
 
 - Todo texto visível, label acessível, título, mensagem de erro e metadata deve ter uma chave no catálogo.
 - Não use string da interface diretamente no JSX nem como fallback de tradução.
-- Mantenha a mesma chave semântica entre locales; não use o texto traduzido como identificador.
 - Use ICU para pluralização, interpolação e formatação de datas/números.
 - Traduza também estados de loading, erro, vazio, sucesso e ações de teclado.
 - Não misture conteúdo editorial, tokens visuais e lógica de tradução no mesmo módulo.
