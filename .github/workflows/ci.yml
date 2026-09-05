@@ -32,3 +32,21 @@ jobs:
         run: pnpm test
       - name: Gerar build de produção
         run: pnpm build
+
+  integration:
+    name: Integração PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v5
+      - name: Preparar pnpm
+        uses: pnpm/action-setup@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+      - name: Iniciar PostgreSQL temporário, aplicar migrations e testar
+        run: pnpm test:integration
