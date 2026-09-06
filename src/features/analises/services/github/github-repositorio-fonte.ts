@@ -1,5 +1,8 @@
-import type { ArquivoDoSnapshot } from '../../analises.types'
-import { ErroFonteRepositorio } from '../fonte-repositorio'
+import type { ArquivoDoSnapshot, ConfiguracaoProjeto } from '../../analises.types'
+import {
+  ErroFonteRepositorio,
+  TAMANHO_MAXIMO_CONFIGURACAO_BYTES,
+} from '../fonte-repositorio'
 import type {
   ArquivoArvoreGitHub,
   FonteRepositorioGitHubCompleta,
@@ -106,6 +109,49 @@ export function criarFonteRepositorioGitHub(
         repositorio,
         arquivos,
       })
+    },
+
+    async obterConfiguracao({ repositorio, arquivos }) {
+      const arquivo = [...arquivos]
+        .filter(
+          (item) => item.caminho === 'tsconfig.json' || item.caminho === 'jsconfig.json',
+        )
+        .sort((primeiro, segundo) => {
+          if (primeiro.caminho === segundo.caminho) return 0
+          return primeiro.caminho === 'tsconfig.json' ? -1 : 1
+        })[0]
+
+      if (!arquivo) return undefined
+
+      if (
+        arquivo.tamanhoBytes !== undefined &&
+        arquivo.tamanhoBytes > TAMANHO_MAXIMO_CONFIGURACAO_BYTES
+      ) {
+        throw new ErroFonteRepositorio('CONFIGURACAO_TAMANHO')
+      }
+
+      const [resultado] = await obterArquivosGitHub({
+        buscar,
+        token,
+        timeoutMs,
+        concorrenciaMaxima: 1,
+        repositorio,
+        arquivos: [arquivo],
+      })
+
+      if (!resultado) return undefined
+
+      if (
+        new TextEncoder().encode(resultado.conteudo).byteLength >
+        TAMANHO_MAXIMO_CONFIGURACAO_BYTES
+      ) {
+        throw new ErroFonteRepositorio('CONFIGURACAO_TAMANHO')
+      }
+
+      return {
+        caminho: arquivo.caminho as ConfiguracaoProjeto['caminho'],
+        conteudo: resultado.conteudo,
+      }
     },
   }
 }

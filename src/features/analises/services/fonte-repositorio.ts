@@ -1,6 +1,7 @@
 import type {
   ArquivoDoSnapshot,
   ArquivoFonte,
+  ConfiguracaoProjeto,
   Repositorio,
 } from '../analises.types'
 
@@ -10,6 +11,11 @@ export interface FonteDeRepositorio {
     commitSha: string
     arquivos: ArquivoDoSnapshot[]
   }): Promise<ArquivoFonte[]>
+  obterConfiguracao?(input: {
+    repositorio: Repositorio
+    commitSha: string
+    arquivos: ArquivoDoSnapshot[]
+  }): Promise<ConfiguracaoProjeto | undefined>
 }
 
 export type CodigoErroFonteRepositorio =
@@ -23,6 +29,12 @@ export type CodigoErroFonteRepositorio =
   | 'QUANTIDADE_ARQUIVOS'
   | 'TAMANHO_ARQUIVO'
   | 'TAMANHO_TOTAL'
+  | 'CONFIGURACAO_INDISPONIVEL'
+  | 'CONFIGURACAO_TAMANHO'
+  | 'CONFIGURACAO_INVALIDA'
+  | 'CONFIGURACAO_NAO_SUPORTADA'
+
+export const TAMANHO_MAXIMO_CONFIGURACAO_BYTES = 512 * 1024
 
 export class ErroFonteRepositorio extends Error {
   constructor(readonly codigo: CodigoErroFonteRepositorio) {

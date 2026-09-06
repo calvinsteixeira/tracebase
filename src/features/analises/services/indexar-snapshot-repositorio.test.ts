@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { IndiceAnalise } from '../analises.types'
+import type { ArquivoDoSnapshot, IndiceAnalise } from '../analises.types'
 import { type FonteDeRepositorio } from './fonte-repositorio'
+import { criarFonteRepositorioGitHub } from './github/github-repositorio-fonte'
 import { indexarImports } from './indexador/indexador-imports'
 import {
   indexarSnapshotRepositorio,
@@ -55,8 +56,11 @@ describe('indexarSnapshotRepositorio', () => {
         caminho: arquivo.caminho,
         tipo: 'typescript',
       })),
+      exportacoes: [],
       simbolos: [],
       relacoesImportacao: [],
+      diagnosticos: [],
+      parcial: false,
     }))
 
     const resultado = await indexarSnapshotRepositorio({
@@ -142,6 +146,94 @@ describe('indexarSnapshotRepositorio', () => {
     ])
   })
 
+  it('obtém tsconfig como auxiliar sem incluí-lo nos arquivos comuns do indexador', async () => {
+    const indexador = vi.fn(() => criarIndiceVazio())
+    const entradaComConfiguracao = {
+      ...entrada,
+      arquivos: [
+        ...entrada.arquivos,
+        { caminho: 'tsconfig.json', sha: 't'.repeat(40), tamanhoBytes: 80 },
+        { caminho: 'jsconfig.json', sha: 'j'.repeat(40), tamanhoBytes: 80 },
+      ],
+    }
+    const fonte: FonteDeRepositorio = {
+      obterArquivos: vi.fn(async ({ arquivos }: { arquivos: ArquivoDoSnapshot[] }) =>
+        arquivos.map((arquivo) => ({ caminho: arquivo.caminho, conteudo: 'export {}' })),
+      ),
+      obterConfiguracao: vi.fn(async ({ arquivos }: { arquivos: ArquivoDoSnapshot[] }) => {
+        expect(arquivos).toEqual([
+          { caminho: 'tsconfig.json', blobSha: 't'.repeat(40), tamanhoBytes: 80 },
+          { caminho: 'jsconfig.json', blobSha: 'j'.repeat(40), tamanhoBytes: 80 },
+        ])
+        return {
+          caminho: 'tsconfig.json' as const,
+          conteudo: '{"compilerOptions":{"baseUrl":"."}}',
+        }
+      }),
+    }
+
+    await indexarSnapshotRepositorio({ entrada: entradaComConfiguracao, fonte, indexador, limites })
+
+    expect(fonte.obterArquivos).toHaveBeenCalledWith({
+      repositorio: entrada.repositorio,
+      commitSha: entrada.snapshot.commitSha,
+      arquivos: [
+        { caminho: 'src/z.ts', blobSha: 'z'.repeat(40), tamanhoBytes: 10 },
+        { caminho: 'src/a.ts', blobSha: 'a'.repeat(40), tamanhoBytes: 10 },
+      ],
+    })
+    expect(indexador).toHaveBeenCalledWith(expect.objectContaining({
+      configuracao: {
+        caminho: 'tsconfig.json',
+        conteudo: '{"compilerOptions":{"baseUrl":"."}}',
+      },
+    }))
+  })
+
+  it('mantém a prioridade do tsconfig sobre o jsconfig no fluxo completo', async () => {
+    const tsconfigSha = 't'.repeat(40)
+    const jsconfigSha = 'j'.repeat(40)
+    const buscar = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      const sha = url.split('/').pop() ?? ''
+      const conteudo = sha === tsconfigSha
+        ? '{"compilerOptions":{"baseUrl":"."}}'
+        : 'export {}'
+
+      return new Response(
+        JSON.stringify({
+          sha,
+          content: Buffer.from(conteudo).toString('base64'),
+          encoding: 'base64',
+        }),
+        { status: 200 },
+      )
+    })
+    const fonte = criarFonteRepositorioGitHub({ buscar })
+    const indexador = vi.fn(() => criarIndiceVazio())
+
+    await indexarSnapshotRepositorio({
+      entrada: {
+        ...entrada,
+        arquivos: [
+          ...entrada.arquivos,
+          { caminho: 'tsconfig.json', sha: tsconfigSha },
+          { caminho: 'jsconfig.json', sha: jsconfigSha },
+        ],
+      },
+      fonte,
+      indexador,
+      limites,
+    })
+
+    expect(indexador).toHaveBeenCalledWith(expect.objectContaining({
+      configuracao: {
+        caminho: 'tsconfig.json',
+        conteudo: '{"compilerOptions":{"baseUrl":"."}}',
+      },
+    }))
+  })
+
   it('revalida a quantidade depois de obter os arquivos da fonte', async () => {
     const indexador = vi.fn(() => criarIndiceVazio())
     const fonte: FonteDeRepositorio = {
@@ -156,6 +248,29 @@ describe('indexarSnapshotRepositorio', () => {
     await expect(
       indexarSnapshotRepositorio({ entrada, fonte, indexador, limites }),
     ).rejects.toMatchObject({ codigo: 'QUANTIDADE_ARQUIVOS' })
+    expect(indexador).not.toHaveBeenCalled()
+  })
+
+  it('aborta quando existe configuração, mas a fonte não consegue obtê-la', async () => {
+    const indexador = vi.fn(() => criarIndiceVazio())
+    const fonte: FonteDeRepositorio = {
+      obterArquivos: vi.fn(async ({ arquivos }: { arquivos: Array<{ caminho: string }> }) =>
+        arquivos.map((arquivo) => ({ caminho: arquivo.caminho, conteudo: 'export {}' })),
+      ),
+      obterConfiguracao: vi.fn(async () => undefined),
+    }
+
+    await expect(
+      indexarSnapshotRepositorio({
+        entrada: {
+          ...entrada,
+          arquivos: [...entrada.arquivos, { caminho: 'tsconfig.json', sha: 't'.repeat(40) }],
+        },
+        fonte,
+        indexador,
+        limites,
+      }),
+    ).rejects.toMatchObject({ codigo: 'CONFIGURACAO_INDISPONIVEL' })
     expect(indexador).not.toHaveBeenCalled()
   })
 
@@ -192,7 +307,10 @@ function criarIndiceVazio(): IndiceAnalise {
   return {
     snapshot: entrada.snapshot,
     arquivos: [],
+    exportacoes: [],
     simbolos: [],
     relacoesImportacao: [],
+    diagnosticos: [],
+    parcial: false,
   }
 }

@@ -84,4 +84,93 @@ describe('criarFonteRepositorioGitHub', () => {
       (erro: unknown) => mapearErroFonteGitHub(erro) === 'VERIFICACAO_INCONCLUSIVA',
     )
   })
+
+  it('obtém tsconfig como arquivo auxiliar e prefere-o ao jsconfig', async () => {
+    const sha = 'f'.repeat(40)
+    const buscar = vi.fn<typeof fetch>(async () =>
+      new Response(
+        JSON.stringify({
+          sha,
+          content: Buffer.from('{"compilerOptions":{"baseUrl":"."}}').toString('base64'),
+          encoding: 'base64',
+        }),
+        { status: 200 },
+      ),
+    )
+    const fonte = criarFonteRepositorioGitHub({ buscar })
+
+    await expect(
+      fonte.obterConfiguracao?.({
+        repositorio: {
+          id: 'repositorio:teste',
+          url: 'https://github.com/dono/repositorio',
+          proprietario: 'dono',
+          nome: 'repositorio',
+        },
+        commitSha: 'c'.repeat(40),
+        arquivos: [
+          { caminho: 'jsconfig.json', blobSha: 'j'.repeat(40) },
+          { caminho: 'tsconfig.json', blobSha: sha },
+        ],
+      }),
+    ).resolves.toEqual({
+      caminho: 'tsconfig.json',
+      conteudo: '{"compilerOptions":{"baseUrl":"."}}',
+    })
+    expect(buscar.mock.calls[0]?.[0]).toContain(`/git/blobs/${sha}`)
+  })
+
+  it('rejeita configuração acima do limite preliminar sem buscar o blob', async () => {
+    const buscar = vi.fn<typeof fetch>()
+    const fonte = criarFonteRepositorioGitHub({ buscar })
+
+    await expect(
+      fonte.obterConfiguracao?.({
+        repositorio: {
+          id: 'repositorio:teste',
+          url: 'https://github.com/dono/repositorio',
+          proprietario: 'dono',
+          nome: 'repositorio',
+        },
+        commitSha: 'c'.repeat(40),
+        arquivos: [
+          {
+            caminho: 'tsconfig.json',
+            blobSha: 't'.repeat(40),
+            tamanhoBytes: 512 * 1024 + 1,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ codigo: 'CONFIGURACAO_TAMANHO' })
+    expect(buscar).not.toHaveBeenCalled()
+  })
+
+  it('revalida o tamanho real da configuração depois de decodificar o blob', async () => {
+    const sha = 't'.repeat(40)
+    const conteudo = 'a'.repeat(512 * 1024 + 1)
+    const buscar = vi.fn<typeof fetch>(async () =>
+      new Response(
+        JSON.stringify({
+          sha,
+          content: Buffer.from(conteudo).toString('base64'),
+          encoding: 'base64',
+        }),
+        { status: 200 },
+      ),
+    )
+    const fonte = criarFonteRepositorioGitHub({ buscar })
+
+    await expect(
+      fonte.obterConfiguracao?.({
+        repositorio: {
+          id: 'repositorio:teste',
+          url: 'https://github.com/dono/repositorio',
+          proprietario: 'dono',
+          nome: 'repositorio',
+        },
+        commitSha: 'c'.repeat(40),
+        arquivos: [{ caminho: 'tsconfig.json', blobSha: sha }],
+      }),
+    ).rejects.toMatchObject({ codigo: 'CONFIGURACAO_TAMANHO' })
+  })
 })

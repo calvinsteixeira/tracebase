@@ -19,6 +19,11 @@ export interface ArquivoFonte {
   conteudo: string
 }
 
+export interface ConfiguracaoProjeto {
+  caminho: 'tsconfig.json' | 'jsconfig.json'
+  conteudo: string
+}
+
 export interface ArquivoDoSnapshot {
   caminho: string
   blobSha: string
@@ -64,6 +69,7 @@ export type DestinoImportacao =
   | {
       tipo: 'nao-resolvido'
       especificador: string
+      expressao?: string
     }
 
 export interface RelacaoImportacao {
@@ -74,9 +80,39 @@ export interface RelacaoImportacao {
   evidencia: Evidencia
 }
 
+export type TipoExportacao = 'nomeada' | 'padrao' | 'reexportacao'
+
+export interface ExportacaoAnalisada {
+  id: string
+  arquivoOrigemId: string
+  nomeExportado: string
+  tipo: TipoExportacao
+  nomeLocal?: string
+  destino?: DestinoImportacao
+  evidencia: Evidencia
+}
+
+export type CodigoDiagnostico =
+  | 'ERRO_SINTATICO'
+  | 'COMMONJS_NAO_SUPORTADO'
+  | 'IMPORT_DINAMICO_NAO_RESOLVIDO'
+
+export type CategoriaDiagnostico = 'sintaxe' | 'limitacao'
+
+export interface DiagnosticoAnalise {
+  id: string
+  codigo: CodigoDiagnostico
+  categoria: CategoriaDiagnostico
+  arquivoOrigemId?: string
+  evidencia: Evidencia
+}
+
 export interface IndiceAnalise {
   snapshot: SnapshotAnalise
   arquivos: ArquivoAnalisado[]
+  exportacoes: ExportacaoAnalisada[]
   simbolos: SimboloAnalisado[]
   relacoesImportacao: RelacaoImportacao[]
+  diagnosticos: DiagnosticoAnalise[]
+  parcial: boolean
 }

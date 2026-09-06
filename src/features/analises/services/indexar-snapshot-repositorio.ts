@@ -1,5 +1,6 @@
 import type {
   ArquivoFonte,
+  ConfiguracaoProjeto,
   IndiceAnalise,
   Repositorio,
   SnapshotAnalise,
@@ -8,6 +9,7 @@ import type { ArquivoArvoreGitHub } from './github/github-repositorio.types'
 import { filtrarArquivosElegiveis } from './politica-elegibilidade-repositorio'
 import {
   ErroFonteRepositorio,
+  TAMANHO_MAXIMO_CONFIGURACAO_BYTES,
   type FonteDeRepositorio,
 } from './fonte-repositorio'
 
@@ -29,6 +31,7 @@ export interface SolicitarIndexacaoSnapshot {
   indexador: (input: {
     snapshot: SnapshotAnalise
     arquivosFonte: ArquivoFonte[]
+    configuracao?: ConfiguracaoProjeto
   }) => IndiceAnalise
   limites: LimitesConteudoRepositorio
 }
@@ -59,9 +62,60 @@ export async function indexarSnapshotRepositorio({
 
   validarLimitesReais(arquivosFonte, limites)
 
+  const arquivosConfiguracao = entrada.arquivos
+    .filter(
+      (arquivo) =>
+        arquivo.caminho === 'tsconfig.json' || arquivo.caminho === 'jsconfig.json',
+    )
+    .map((arquivo) => ({
+      caminho: arquivo.caminho,
+      blobSha: arquivo.sha,
+      ...(arquivo.tamanhoBytes === undefined
+        ? {}
+        : { tamanhoBytes: arquivo.tamanhoBytes }),
+    }))
+
+  if (arquivosConfiguracao.length > 0 && !fonte.obterConfiguracao) {
+    throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+  }
+
+  let configuracao: ConfiguracaoProjeto | undefined
+
+  if (arquivosConfiguracao.length > 0 && fonte.obterConfiguracao) {
+    try {
+      configuracao = await fonte.obterConfiguracao({
+        repositorio: entrada.repositorio,
+        commitSha: entrada.snapshot.commitSha,
+        arquivos: arquivosConfiguracao,
+      })
+    } catch (erro) {
+      if (
+        erro instanceof ErroFonteRepositorio &&
+        erro.codigo === 'CONFIGURACAO_TAMANHO'
+      ) {
+        throw erro
+      }
+
+      throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+    }
+  }
+
+  if (arquivosConfiguracao.length > 0 && !configuracao) {
+    throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+  }
+
+  if (
+    configuracao &&
+    new TextEncoder().encode(configuracao.conteudo).byteLength >
+      TAMANHO_MAXIMO_CONFIGURACAO_BYTES
+  ) {
+    throw new ErroFonteRepositorio('CONFIGURACAO_TAMANHO')
+  }
+
   return indexador({
     snapshot: entrada.snapshot,
     arquivosFonte,
+    ...(configuracao ? { configuracao } : {}),
   })
 }
 

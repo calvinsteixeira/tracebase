@@ -63,6 +63,12 @@ Use aliases configurados no TypeScript, como `@/components`, `@/features` e `@/l
 - Quando uma capacidade puder ser expressa por um contrato interno, não acople o indexador a uma implementação, parser ou biblioteca específica.
 - Separe claramente domínio, aplicação/serviços e infraestrutura: o domínio descreve regras e conceitos; a aplicação orquestra casos de uso; a infraestrutura conecta recursos externos.
 
+### Falhas locais, configuração global e conteúdo auxiliar
+
+- Diferencie falhas localizadas de falhas que comprometem o modelo inteiro. Um arquivo com sintaxe inválida, uma ocorrência de CommonJS não suportada ou um destino dinâmico não determinável pode gerar análise parcial e diagnóstico estruturado, preservando somente os fatos seguros dos demais arquivos.
+- Configurações globais necessárias para interpretar o conjunto, quando vierem de uma fonte externa não confiável, devem ser validadas antes de produzir fatos. Se o arquivo de configuração estiver presente, mas não puder ser obtido, decodificado ou interpretado com segurança, aborte o caso de uso com erro controlado; não improvise resolução alternativa nem devolva índice parcial estruturalmente incorreto.
+- Para conteúdo auxiliar ou externo, aplique limites tanto com a metainformação preliminar quanto depois de obter e decodificar o conteúdo real quando a primeira medição puder estar ausente ou incompleta. Conteúdo auxiliar não deve ser confundido com os arquivos principais nem escapar para persistência ou resposta pública sem necessidade.
+
 ### Server Components e Client Components
 
 - Server Components são o padrão. Mantenha no servidor páginas, layouts, busca inicial de dados e composição estática sempre que possível.
@@ -452,6 +458,8 @@ Regras de teste:
 - Para TanStack Query, crie um `QueryClient` novo por teste e desative retries quando isso evitar flakiness.
 - Para Zustand, limpe ou recrie a store entre testes; um teste não pode depender do estado deixado por outro.
 - Não valide somente que uma string fixa existe; valide que a pessoa consegue realizar a ação e observar o resultado.
+- Para fatos estruturais, valide a evidência completa — arquivo, linha inicial, coluna inicial, linha final e coluna final — em vez de apenas verificar que a linha é maior que zero.
+- Um conjunto verde de lint, typecheck, testes e build comprova somente os cenários cobertos. Critérios de aceite exigem testes representativos para cada comportamento e limite relevante; não trate a passagem dos comandos como prova de requisitos que não foram exercitados.
 
 ## Checklist antes de concluir
 
