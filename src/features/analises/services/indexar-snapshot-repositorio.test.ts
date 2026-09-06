@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { IndiceAnalise } from '../analises.types'
 import { type FonteDeRepositorio } from './fonte-repositorio'
+import { indexarImports } from './indexador/indexador-imports'
 import {
   indexarSnapshotRepositorio,
   type LimitesConteudoRepositorio,
@@ -107,6 +108,54 @@ describe('indexarSnapshotRepositorio', () => {
     await expect(
       indexarSnapshotRepositorio({ entrada, fonte, indexador, limites }),
     ).rejects.toMatchObject({ codigo: 'TAMANHO_TOTAL' })
+    expect(indexador).not.toHaveBeenCalled()
+  })
+
+  it('aceita extensões elegíveis em caixa alta e classifica o tipo corretamente', async () => {
+    const entradaComExtensoesEmCaixaAlta = {
+      ...entrada,
+      arquivos: [
+        { caminho: 'src/client.JS', sha: '1'.repeat(40) },
+        { caminho: 'src/view.JsX', sha: '2'.repeat(40) },
+        { caminho: 'src/types.TS', sha: '3'.repeat(40) },
+        { caminho: 'src/page.TsX', sha: '4'.repeat(40) },
+      ],
+    }
+    const fonte: FonteDeRepositorio = {
+      obterArquivos: vi.fn(async ({ arquivos }: { arquivos: Array<{ caminho: string }> }) =>
+        arquivos.map((arquivo) => ({ caminho: arquivo.caminho, conteudo: 'export {}' })),
+      ),
+    }
+
+    const resultado = await indexarSnapshotRepositorio({
+      entrada: entradaComExtensoesEmCaixaAlta,
+      fonte,
+      indexador: indexarImports,
+      limites,
+    })
+
+    expect(resultado.arquivos).toEqual([
+      { id: 'arquivo:src/client.JS', caminho: 'src/client.JS', tipo: 'javascript' },
+      { id: 'arquivo:src/page.TsX', caminho: 'src/page.TsX', tipo: 'typescript' },
+      { id: 'arquivo:src/types.TS', caminho: 'src/types.TS', tipo: 'typescript' },
+      { id: 'arquivo:src/view.JsX', caminho: 'src/view.JsX', tipo: 'javascript' },
+    ])
+  })
+
+  it('revalida a quantidade depois de obter os arquivos da fonte', async () => {
+    const indexador = vi.fn(() => criarIndiceVazio())
+    const fonte: FonteDeRepositorio = {
+      obterArquivos: vi.fn(async () =>
+        Array.from({ length: 251 }, (_, indice) => ({
+          caminho: `src/arquivo-${indice}.ts`,
+          conteudo: 'export {}',
+        })),
+      ),
+    }
+
+    await expect(
+      indexarSnapshotRepositorio({ entrada, fonte, indexador, limites }),
+    ).rejects.toMatchObject({ codigo: 'QUANTIDADE_ARQUIVOS' })
     expect(indexador).not.toHaveBeenCalled()
   })
 
