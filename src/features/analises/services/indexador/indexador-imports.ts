@@ -40,6 +40,17 @@ interface ResolucaoModulos {
   diagnosticos: DiagnosticoAnalise[]
 }
 
+export type CodigoErroConfiguracaoIndexacao =
+  | 'CONFIGURACAO_INVALIDA'
+  | 'CONFIGURACAO_NAO_SUPORTADA'
+
+export class ErroConfiguracaoIndexacao extends Error {
+  constructor(readonly codigo: CodigoErroConfiguracaoIndexacao) {
+    super(codigo)
+    this.name = 'ErroConfiguracaoIndexacao'
+  }
+}
+
 export function indexarImports({
   snapshot,
   arquivosFonte,
@@ -114,7 +125,7 @@ function criarResolucaoModulos(
   configuracao?: ConfiguracaoProjeto,
 ): ResolucaoModulos {
   const diagnosticos: DiagnosticoAnalise[] = []
-  const configuracaoResolucao = lerConfiguracaoResolucao(configuracao, diagnosticos)
+  const configuracaoResolucao = lerConfiguracaoResolucao(configuracao)
 
   return {
     diagnosticos,
@@ -130,7 +141,6 @@ function criarResolucaoModulos(
 
 function lerConfiguracaoResolucao(
   configuracao: ConfiguracaoProjeto | undefined,
-  diagnosticos: DiagnosticoAnalise[],
 ) {
   if (!configuracao) {
     return {
@@ -140,66 +150,35 @@ function lerConfiguracaoResolucao(
     }
   }
 
-  const sourceConfiguracao = ts.parseJsonText(
-    configuracao.caminho,
-    configuracao.conteudo,
-  )
-  const evidenciaConfiguracao = criarEvidenciaDoNo(
-    sourceConfiguracao,
-    0,
-    Math.min(configuracao.conteudo.length, 1),
-  )
   const resultado = ts.parseConfigFileTextToJson(
     configuracao.caminho,
     configuracao.conteudo,
   )
 
   if (resultado.error || !eObjeto(resultado.config)) {
-    diagnosticos.push(
-      criarDiagnostico(
-        'CONFIGURACAO_ALIASES_INVALIDA',
-        'limitacao',
-        evidenciaConfiguracao,
-      ),
-    )
-    return {
-      baseUrl: undefined as string | undefined,
-      aliases: [] as MapeamentoAlias[],
-      aliasDeclarado: () => false,
-    }
+    throw new ErroConfiguracaoIndexacao('CONFIGURACAO_INVALIDA')
   }
 
   if (resultado.config.extends !== undefined) {
-    diagnosticos.push(
-      criarDiagnostico(
-        'CONFIGURACAO_EXTENDS_NAO_SUPORTADO',
-        'limitacao',
-        evidenciaConfiguracao,
-      ),
-    )
+    throw new ErroConfiguracaoIndexacao('CONFIGURACAO_NAO_SUPORTADA')
   }
 
   const compilerOptions = resultado.config.compilerOptions
   if (compilerOptions !== undefined && !eObjeto(compilerOptions)) {
-    diagnosticos.push(
-      criarDiagnostico(
-        'CONFIGURACAO_ALIASES_INVALIDA',
-        'limitacao',
-        evidenciaConfiguracao,
-      ),
-    )
-    return {
-      baseUrl: undefined as string | undefined,
-      aliases: [] as MapeamentoAlias[],
-      aliasDeclarado: () => false,
-    }
+    throw new ErroConfiguracaoIndexacao('CONFIGURACAO_INVALIDA')
   }
 
-  const baseUrl =
-    typeof compilerOptions?.baseUrl === 'string'
-      ? normalizarCaminho(compilerOptions.baseUrl)
-      : undefined
-  const aliases = criarMapeamentosAlias(compilerOptions?.paths, evidenciaConfiguracao, diagnosticos)
+  if (
+    compilerOptions?.baseUrl !== undefined &&
+    typeof compilerOptions.baseUrl !== 'string'
+  ) {
+    throw new ErroConfiguracaoIndexacao('CONFIGURACAO_INVALIDA')
+  }
+
+  const baseUrl = compilerOptions?.baseUrl
+    ? normalizarCaminho(compilerOptions.baseUrl)
+    : undefined
+  const aliases = criarMapeamentosAlias(compilerOptions?.paths)
 
   return {
     baseUrl,
@@ -211,16 +190,11 @@ function lerConfiguracaoResolucao(
 
 function criarMapeamentosAlias(
   paths: unknown,
-  evidencia: Evidencia,
-  diagnosticos: DiagnosticoAnalise[],
 ): MapeamentoAlias[] {
   if (paths === undefined) return []
 
   if (!eObjeto(paths)) {
-    diagnosticos.push(
-      criarDiagnostico('CONFIGURACAO_ALIASES_INVALIDA', 'limitacao', evidencia),
-    )
-    return []
+    throw new ErroConfiguracaoIndexacao('CONFIGURACAO_INVALIDA')
   }
 
   const aliases: MapeamentoAlias[] = []
@@ -228,10 +202,7 @@ function criarMapeamentosAlias(
   for (const chave of Object.keys(paths).sort()) {
     const valor = paths[chave]
     if (!Array.isArray(valor) || !valor.every((alvo): alvo is string => typeof alvo === 'string')) {
-      diagnosticos.push(
-        criarDiagnostico('CONFIGURACAO_ALIASES_INVALIDA', 'limitacao', evidencia),
-      )
-      continue
+      throw new ErroConfiguracaoIndexacao('CONFIGURACAO_INVALIDA')
     }
 
     aliases.push({ chave, alvos: valor })
@@ -402,6 +373,20 @@ function extrairExportacoes(
           evidencia: declaracao.name
             ? criarEvidenciaDoNo(arquivo.sourceFile, declaracao.name)
             : criarEvidenciaDoNo(arquivo.sourceFile, declaracao),
+        }),
+      )
+      continue
+    }
+
+    if (ehPadrao && ts.isInterfaceDeclaration(declaracao)) {
+      if (!declaracao.name) continue
+      exportacoes.push(
+        criarExportacao({
+          arquivo,
+          nomeExportado: 'default',
+          tipo: 'padrao',
+          nomeLocal: declaracao.name.text,
+          evidencia: criarEvidenciaDoNo(arquivo.sourceFile, declaracao.name),
         }),
       )
       continue

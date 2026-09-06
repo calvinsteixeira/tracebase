@@ -1,5 +1,8 @@
 import type { ArquivoDoSnapshot, ConfiguracaoProjeto } from '../../analises.types'
-import { ErroFonteRepositorio } from '../fonte-repositorio'
+import {
+  ErroFonteRepositorio,
+  TAMANHO_MAXIMO_CONFIGURACAO_BYTES,
+} from '../fonte-repositorio'
 import type {
   ArquivoArvoreGitHub,
   FonteRepositorioGitHubCompleta,
@@ -120,6 +123,13 @@ export function criarFonteRepositorioGitHub(
 
       if (!arquivo) return undefined
 
+      if (
+        arquivo.tamanhoBytes !== undefined &&
+        arquivo.tamanhoBytes > TAMANHO_MAXIMO_CONFIGURACAO_BYTES
+      ) {
+        throw new ErroFonteRepositorio('CONFIGURACAO_TAMANHO')
+      }
+
       const [resultado] = await obterArquivosGitHub({
         buscar,
         token,
@@ -130,6 +140,13 @@ export function criarFonteRepositorioGitHub(
       })
 
       if (!resultado) return undefined
+
+      if (
+        new TextEncoder().encode(resultado.conteudo).byteLength >
+        TAMANHO_MAXIMO_CONFIGURACAO_BYTES
+      ) {
+        throw new ErroFonteRepositorio('CONFIGURACAO_TAMANHO')
+      }
 
       return {
         caminho: arquivo.caminho as ConfiguracaoProjeto['caminho'],

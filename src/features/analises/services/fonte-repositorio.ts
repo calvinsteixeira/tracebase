@@ -29,6 +29,12 @@ export type CodigoErroFonteRepositorio =
   | 'QUANTIDADE_ARQUIVOS'
   | 'TAMANHO_ARQUIVO'
   | 'TAMANHO_TOTAL'
+  | 'CONFIGURACAO_INDISPONIVEL'
+  | 'CONFIGURACAO_TAMANHO'
+  | 'CONFIGURACAO_INVALIDA'
+  | 'CONFIGURACAO_NAO_SUPORTADA'
+
+export const TAMANHO_MAXIMO_CONFIGURACAO_BYTES = 512 * 1024
 
 export class ErroFonteRepositorio extends Error {
   constructor(readonly codigo: CodigoErroFonteRepositorio) {

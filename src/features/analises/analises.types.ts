@@ -96,8 +96,6 @@ export type CodigoDiagnostico =
   | 'ERRO_SINTATICO'
   | 'COMMONJS_NAO_SUPORTADO'
   | 'IMPORT_DINAMICO_NAO_RESOLVIDO'
-  | 'CONFIGURACAO_ALIASES_INVALIDA'
-  | 'CONFIGURACAO_EXTENDS_NAO_SUPORTADO'
 
 export type CategoriaDiagnostico = 'sintaxe' | 'limitacao'
 
