@@ -1,6 +1,7 @@
 import type {
   ArquivoDoSnapshot,
   ArquivoFonte,
+  ConfiguracaoProjeto,
   Repositorio,
 } from '../analises.types'
 
@@ -10,6 +11,11 @@ export interface FonteDeRepositorio {
     commitSha: string
     arquivos: ArquivoDoSnapshot[]
   }): Promise<ArquivoFonte[]>
+  obterConfiguracao?(input: {
+    repositorio: Repositorio
+    commitSha: string
+    arquivos: ArquivoDoSnapshot[]
+  }): Promise<ConfiguracaoProjeto | undefined>
 }
 
 export type CodigoErroFonteRepositorio =

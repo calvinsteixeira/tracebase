@@ -1,4 +1,4 @@
-import type { ArquivoDoSnapshot } from '../../analises.types'
+import type { ArquivoDoSnapshot, ConfiguracaoProjeto } from '../../analises.types'
 import { ErroFonteRepositorio } from '../fonte-repositorio'
 import type {
   ArquivoArvoreGitHub,
@@ -106,6 +106,35 @@ export function criarFonteRepositorioGitHub(
         repositorio,
         arquivos,
       })
+    },
+
+    async obterConfiguracao({ repositorio, arquivos }) {
+      const arquivo = [...arquivos]
+        .filter(
+          (item) => item.caminho === 'tsconfig.json' || item.caminho === 'jsconfig.json',
+        )
+        .sort((primeiro, segundo) => {
+          if (primeiro.caminho === segundo.caminho) return 0
+          return primeiro.caminho === 'tsconfig.json' ? -1 : 1
+        })[0]
+
+      if (!arquivo) return undefined
+
+      const [resultado] = await obterArquivosGitHub({
+        buscar,
+        token,
+        timeoutMs,
+        concorrenciaMaxima: 1,
+        repositorio,
+        arquivos: [arquivo],
+      })
+
+      if (!resultado) return undefined
+
+      return {
+        caminho: arquivo.caminho as ConfiguracaoProjeto['caminho'],
+        conteudo: resultado.conteudo,
+      }
     },
   }
 }

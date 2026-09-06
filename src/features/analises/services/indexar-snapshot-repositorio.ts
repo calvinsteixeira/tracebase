@@ -1,5 +1,6 @@
 import type {
   ArquivoFonte,
+  ConfiguracaoProjeto,
   IndiceAnalise,
   Repositorio,
   SnapshotAnalise,
@@ -29,6 +30,7 @@ export interface SolicitarIndexacaoSnapshot {
   indexador: (input: {
     snapshot: SnapshotAnalise
     arquivosFonte: ArquivoFonte[]
+    configuracao?: ConfiguracaoProjeto
   }) => IndiceAnalise
   limites: LimitesConteudoRepositorio
 }
@@ -59,9 +61,27 @@ export async function indexarSnapshotRepositorio({
 
   validarLimitesReais(arquivosFonte, limites)
 
+  const configuracao = fonte.obterConfiguracao
+    ? await fonte.obterConfiguracao({
+        repositorio: entrada.repositorio,
+        commitSha: entrada.snapshot.commitSha,
+        arquivos: entrada.arquivos.filter(
+          (arquivo) =>
+            arquivo.caminho === 'tsconfig.json' || arquivo.caminho === 'jsconfig.json',
+        ).map((arquivo) => ({
+          caminho: arquivo.caminho,
+          blobSha: arquivo.sha,
+          ...(arquivo.tamanhoBytes === undefined
+            ? {}
+            : { tamanhoBytes: arquivo.tamanhoBytes }),
+        })),
+      })
+    : undefined
+
   return indexador({
     snapshot: entrada.snapshot,
     arquivosFonte,
+    ...(configuracao ? { configuracao } : {}),
   })
 }
 

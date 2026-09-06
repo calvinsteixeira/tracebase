@@ -84,4 +84,39 @@ describe('criarFonteRepositorioGitHub', () => {
       (erro: unknown) => mapearErroFonteGitHub(erro) === 'VERIFICACAO_INCONCLUSIVA',
     )
   })
+
+  it('obtém tsconfig como arquivo auxiliar e prefere-o ao jsconfig', async () => {
+    const sha = 'f'.repeat(40)
+    const buscar = vi.fn<typeof fetch>(async () =>
+      new Response(
+        JSON.stringify({
+          sha,
+          content: Buffer.from('{"compilerOptions":{"baseUrl":"."}}').toString('base64'),
+          encoding: 'base64',
+        }),
+        { status: 200 },
+      ),
+    )
+    const fonte = criarFonteRepositorioGitHub({ buscar })
+
+    await expect(
+      fonte.obterConfiguracao?.({
+        repositorio: {
+          id: 'repositorio:teste',
+          url: 'https://github.com/dono/repositorio',
+          proprietario: 'dono',
+          nome: 'repositorio',
+        },
+        commitSha: 'c'.repeat(40),
+        arquivos: [
+          { caminho: 'jsconfig.json', blobSha: 'j'.repeat(40) },
+          { caminho: 'tsconfig.json', blobSha: sha },
+        ],
+      }),
+    ).resolves.toEqual({
+      caminho: 'tsconfig.json',
+      conteudo: '{"compilerOptions":{"baseUrl":"."}}',
+    })
+    expect(buscar.mock.calls[0]?.[0]).toContain(`/git/blobs/${sha}`)
+  })
 })
