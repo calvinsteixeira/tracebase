@@ -179,13 +179,17 @@ function criarIdRelacao(caminhoOrigem: string, especificador: string, linha: num
 }
 
 function identificarTipoArquivo(caminho: string): TipoArquivoFonte {
-  return caminho.endsWith('.ts') || caminho.endsWith('.tsx')
+  const caminhoNormalizado = caminho.toLowerCase()
+
+  return caminhoNormalizado.endsWith('.ts') || caminhoNormalizado.endsWith('.tsx')
     ? 'typescript'
     : 'javascript'
 }
 
 function validarCaminhoArquivo(caminho: string) {
-  if (!extensoesSuportadas.some((extensao) => caminho.endsWith(extensao))) {
+  const caminhoNormalizado = caminho.toLowerCase()
+
+  if (!extensoesSuportadas.some((extensao) => caminhoNormalizado.endsWith(extensao))) {
     throw new Error('O arquivo "' + caminho + '" não é JavaScript ou TypeScript.')
   }
 }

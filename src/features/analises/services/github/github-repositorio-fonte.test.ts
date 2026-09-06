@@ -18,8 +18,8 @@ describe('criarFonteRepositorioGitHub', () => {
       {
         truncated: false,
         tree: [
-          { path: 'src/index.ts', type: 'blob', size: 100 },
-          { path: 'README.md', type: 'blob', size: 50 },
+          { path: 'src/index.ts', sha: 'd'.repeat(40), type: 'blob', size: 100 },
+          { path: 'README.md', sha: 'e'.repeat(40), type: 'blob', size: 50 },
           { path: 'src', type: 'tree' },
         ],
       },
@@ -37,7 +37,10 @@ describe('criarFonteRepositorioGitHub', () => {
       url: 'https://github.com/dono/repositorio',
       referencia: 'main',
       commitSha: 'b'.repeat(40),
-      arquivos: [{ caminho: 'src/index.ts', tamanhoBytes: 100 }, { caminho: 'README.md', tamanhoBytes: 50 }],
+      arquivos: [
+        { caminho: 'src/index.ts', sha: 'd'.repeat(40), tamanhoBytes: 100 },
+        { caminho: 'README.md', sha: 'e'.repeat(40), tamanhoBytes: 50 },
+      ],
     })
 
     expect(buscar).toHaveBeenCalledTimes(3)
