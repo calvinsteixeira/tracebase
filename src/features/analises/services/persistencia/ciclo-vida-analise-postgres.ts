@@ -6,7 +6,7 @@ import type {
   FalhaAnalise,
   RepositorioCicloVidaAnalise,
   ResultadoAquisicaoProcessamento,
-  SnapshotAnalise,
+  SnapshotCicloVidaAnalise,
 } from './ciclo-vida-analise'
 
 interface LinhaSnapshotCiclo {
@@ -16,8 +16,8 @@ interface LinhaSnapshotCiclo {
   nome: string
   commit_sha: string
   referencia: string
-  estado: SnapshotAnalise['estado']
-  etapa: SnapshotAnalise['etapa']
+  estado: SnapshotCicloVidaAnalise['estado']
+  etapa: SnapshotCicloVidaAnalise['etapa']
   tentativa: number
   tentativa_iniciada_em: string | null
   ultima_atividade_em: string | null
@@ -390,7 +390,7 @@ function mapearResultadoAquisicao(
   }
 }
 
-function mapearSnapshot(linha: LinhaSnapshotCiclo | undefined): SnapshotAnalise {
+function mapearSnapshot(linha: LinhaSnapshotCiclo | undefined): SnapshotCicloVidaAnalise {
   if (!linha) throw new Error('Snapshot não encontrado após operação atômica.')
 
   const falha: FalhaAnalise | null = linha.erro_codigo

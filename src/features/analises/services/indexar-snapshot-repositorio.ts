@@ -3,7 +3,7 @@ import type {
   ConfiguracaoProjeto,
   IndiceAnalise,
   Repositorio,
-  SnapshotAnalise,
+  IdentidadeSnapshotIndice,
 } from '../analises.types'
 import type { ArquivoArvoreGitHub } from './github/github-repositorio.types'
 import { filtrarArquivosElegiveis } from './politica-elegibilidade-repositorio'
@@ -21,7 +21,7 @@ export interface LimitesConteudoRepositorio {
 
 export interface EntradaIndexacaoSnapshot {
   repositorio: Repositorio
-  snapshot: SnapshotAnalise
+  snapshot: IdentidadeSnapshotIndice
   arquivos: ArquivoArvoreGitHub[]
 }
 
@@ -29,7 +29,7 @@ export interface SolicitarIndexacaoSnapshot {
   entrada: EntradaIndexacaoSnapshot
   fonte: FonteDeRepositorio
   indexador: (input: {
-    snapshot: SnapshotAnalise
+  snapshot: IdentidadeSnapshotIndice
     arquivosFonte: ArquivoFonte[]
     configuracao?: ConfiguracaoProjeto
   }) => IndiceAnalise

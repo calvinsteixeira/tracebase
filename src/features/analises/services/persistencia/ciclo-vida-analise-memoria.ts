@@ -1,15 +1,31 @@
 import { randomUUID } from 'node:crypto'
 
+import type { IndiceAnalise } from '../../analises.types'
 import type {
-  DadosSnapshotAnalise,
+  DadosCriacaoSnapshotAnalise,
   FalhaAnaliseParaRegistro,
   RepositorioCicloVidaAnalise,
-  SnapshotAnalise,
+  SnapshotCicloVidaAnalise,
 } from './ciclo-vida-analise'
 
-export function criarCicloVidaAnaliseEmMemoria(): RepositorioCicloVidaAnalise {
-  const snapshots = new Map<string, SnapshotAnalise>()
-  const chaves = new Map<string, string>()
+export interface EstadoCicloVidaAnaliseEmMemoria {
+  snapshots: Map<string, SnapshotCicloVidaAnalise>
+  chaves: Map<string, string>
+  indices: Map<string, IndiceAnalise>
+}
+
+export function criarEstadoCicloVidaAnaliseEmMemoria(): EstadoCicloVidaAnaliseEmMemoria {
+  return {
+    snapshots: new Map(),
+    chaves: new Map(),
+    indices: new Map(),
+  }
+}
+
+export function criarCicloVidaAnaliseEmMemoria(
+  estado = criarEstadoCicloVidaAnaliseEmMemoria(),
+): RepositorioCicloVidaAnalise {
+  const { snapshots, chaves } = estado
 
   return {
     async criarOuReutilizar(input) {
@@ -19,7 +35,7 @@ export function criarCicloVidaAnaliseEmMemoria(): RepositorioCicloVidaAnalise {
 
       if (existente) return clonarSnapshot(existente)
 
-      const snapshot: SnapshotAnalise = {
+      const snapshot: SnapshotCicloVidaAnalise = {
         idPublico: randomUUID(),
         repositorio: { ...input.repositorio },
         commitSha: input.commitSha,
@@ -155,7 +171,7 @@ export function criarCicloVidaAnaliseEmMemoria(): RepositorioCicloVidaAnalise {
 }
 
 function aplicarFalha(
-  snapshot: SnapshotAnalise,
+  snapshot: SnapshotCicloVidaAnalise,
   input: {
     agora: string
     falha: FalhaAnaliseParaRegistro
@@ -175,9 +191,9 @@ function aplicarFalha(
 }
 
 function leaseValido(
-  snapshot: SnapshotAnalise | undefined,
+  snapshot: SnapshotCicloVidaAnalise | undefined,
   input: { tentativa: number; leaseId: string; agora: string },
-): snapshot is SnapshotAnalise {
+): snapshot is SnapshotCicloVidaAnalise {
   return Boolean(
     snapshot &&
       snapshot.estado === 'processando' &&
@@ -188,11 +204,11 @@ function leaseValido(
   )
 }
 
-function criarChave(input: Pick<DadosSnapshotAnalise, 'repositorio' | 'commitSha'>) {
+function criarChave(input: Pick<DadosCriacaoSnapshotAnalise, 'repositorio' | 'commitSha'>) {
   return `${input.repositorio.proprietario.toLowerCase()}/${input.repositorio.nome.toLowerCase()}:${input.commitSha}`
 }
 
-function clonarSnapshot(snapshot: SnapshotAnalise): SnapshotAnalise {
+function clonarSnapshot(snapshot: SnapshotCicloVidaAnalise): SnapshotCicloVidaAnalise {
   return {
     ...snapshot,
     repositorio: { ...snapshot.repositorio },

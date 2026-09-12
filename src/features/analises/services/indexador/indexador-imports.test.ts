@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import type {
   ArquivoFonte,
-  SnapshotAnalise,
+  IdentidadeSnapshotIndice,
 } from '@/features/analises/analises.types'
 
 import { indexarImports } from './indexador-imports'
@@ -17,9 +17,13 @@ const diretorioFixture = path.resolve(
   '../../../../test/fixtures/repositorios/projeto-imports',
 )
 
-const snapshot: SnapshotAnalise = {
-  id: 'snapshot:tracebase-fixture',
-  repositorioId: 'repositorio:tracebase-fixture',
+const snapshot: IdentidadeSnapshotIndice = {
+  idPublico: 'snapshot:tracebase-fixture',
+  repositorio: {
+    url: 'https://github.com/tracebase/fixture',
+    proprietario: 'tracebase',
+    nome: 'fixture',
+  },
   commitSha: 'a1b2c3d4',
   referencia: 'main',
 }

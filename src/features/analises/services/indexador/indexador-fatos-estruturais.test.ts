@@ -4,15 +4,19 @@ import type {
   ArquivoFonte,
   ConfiguracaoProjeto,
   IndiceAnalise,
-  SnapshotAnalise,
+  IdentidadeSnapshotIndice,
 } from '@/features/analises/analises.types'
 
 import { indexarImports } from './indexador-imports'
 import { ErroConfiguracaoIndexacao } from './indexador-imports'
 
-const snapshot: SnapshotAnalise = {
-  id: 'snapshot:task-3',
-  repositorioId: 'repositorio:task-3',
+const snapshot: IdentidadeSnapshotIndice = {
+  idPublico: 'snapshot:task-3',
+  repositorio: {
+    url: 'https://github.com/tracebase/task-3',
+    proprietario: 'tracebase',
+    nome: 'task-3',
+  },
   commitSha: 'commit-task-3',
   referencia: 'main',
 }

@@ -7,9 +7,13 @@ export interface Repositorio {
   nome: string
 }
 
-export interface SnapshotAnalise {
-  id: string
-  repositorioId: string
+export interface IdentidadeSnapshotIndice {
+  idPublico: string
+  repositorio: {
+    url: string
+    proprietario: string
+    nome: string
+  }
   commitSha: string
   referencia: string
 }
@@ -108,7 +112,7 @@ export interface DiagnosticoAnalise {
 }
 
 export interface IndiceAnalise {
-  snapshot: SnapshotAnalise
+  snapshot: IdentidadeSnapshotIndice
   arquivos: ArquivoAnalisado[]
   exportacoes: ExportacaoAnalisada[]
   simbolos: SimboloAnalisado[]
