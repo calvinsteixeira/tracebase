@@ -41,11 +41,15 @@ describe('persistência transacional do índice PostgreSQL', () => {
 
     const resultado = await persistencia.salvarEConcluir(entrada)
 
-    expect(resultado).toEqual({ tipo: 'persistido', indice: entrada.indice })
-    expect(await persistencia.buscarPorSnapshotConcluido(preparado.snapshot.idPublico))
-      .toEqual(entrada.indice)
+    expect(resultado).toEqual({
+      tipo: 'persistido',
+      indice: { indice: entrada.indice, arquivos: entrada.arquivos },
+    })
+    const recuperado = await persistencia.buscarPorSnapshotConcluido(preparado.snapshot.idPublico)
+    expect(recuperado?.indice).toEqual(entrada.indice)
+    expect(recuperado?.arquivos).toEqual(entrada.arquivos)
     expect(await persistencia.buscarPorRepositorioECommit({ url, commitSha: 'a'.repeat(40) }))
-      .toEqual(entrada.indice)
+      .toEqual({ indice: entrada.indice, arquivos: entrada.arquivos })
     expect(
       await pool.query(
         `SELECT caminho, blob_sha FROM arquivos_indice ai
@@ -73,13 +77,30 @@ describe('persistência transacional do índice PostgreSQL', () => {
       indice: { ...entrada.indice, parcial: false },
     })
 
-    expect(repetido).toEqual({ tipo: 'ja_concluido', indice: entrada.indice })
+    expect(repetido).toEqual({
+      tipo: 'ja_concluido',
+      indice: { indice: entrada.indice, arquivos: entrada.arquivos },
+    })
     const contagem = await pool.query<{ total: string }>(
       `SELECT COUNT(*)::text AS total FROM indices_estruturais i
        INNER JOIN snapshots s ON s.id = i.snapshot_id WHERE s.id_publico = $1::uuid`,
       [preparado.snapshot.idPublico],
     )
     expect(contagem.rows[0]?.total).toBe('1')
+  })
+
+  it('insere fatos em múltiplos lotes e mantém o round-trip completo', async () => {
+    const preparado = await prepararSnapshot('0'.repeat(40))
+    const entrada = criarEntrada(preparado.snapshot, preparado.leaseId, false, 120)
+
+    const resultado = await persistencia.salvarEConcluir(entrada)
+
+    expect(resultado).toEqual({
+      tipo: 'persistido',
+      indice: { indice: entrada.indice, arquivos: entrada.arquivos },
+    })
+    expect(await persistencia.buscarPorSnapshotConcluido(preparado.snapshot.idPublico))
+      .toEqual({ indice: entrada.indice, arquivos: entrada.arquivos })
   })
 
   it('faz rollback integral quando uma inserção do índice falha', async () => {
@@ -178,8 +199,8 @@ describe('persistência transacional do índice PostgreSQL', () => {
 
     const um = await persistencia.buscarPorRepositorioECommit({ url, commitSha: 'e'.repeat(40) })
     const dois = await persistencia.buscarPorRepositorioECommit({ url, commitSha: 'f'.repeat(40) })
-    expect(um?.arquivos[0]?.id).toBe(dois?.arquivos[0]?.id)
-    expect(um?.snapshot.idPublico).not.toBe(dois?.snapshot.idPublico)
+    expect(um?.arquivos[0]?.caminho).toBe(dois?.arquivos[0]?.caminho)
+    expect(um?.indice.snapshot.idPublico).not.toBe(dois?.indice.snapshot.idPublico)
   })
 
   it('rejeita referências internas entre snapshots diferentes e combinações de destino inválidas', async () => {
@@ -237,6 +258,43 @@ describe('persistência transacional do índice PostgreSQL', () => {
     ).rejects.toMatchObject({ code: '23514' })
   })
 
+  it('protege a ordem das evidências em símbolos, exports, imports e diagnósticos', async () => {
+    const preparado = await prepararSnapshot('3'.repeat(40))
+    const entrada = criarEntrada(preparado.snapshot, preparado.leaseId)
+    await persistencia.salvarEConcluir(entrada)
+    const ids = await pool.query<{ snapshot_id: string }>(
+      `SELECT id::text AS snapshot_id FROM snapshots WHERE id_publico = $1::uuid`,
+      [preparado.snapshot.idPublico],
+    )
+    const snapshotId = ids.rows[0]?.snapshot_id
+    const arquivoId = 'arquivo:src/entrada.ts'
+
+    const casos = [
+      `INSERT INTO simbolos_indice
+        (snapshot_id, id_fato, arquivo_id, nome, tipo, evidencia_caminho,
+         evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna)
+       VALUES ($1, 'simbolo:ordem-invalida', $2, 'x', 'funcao', 'src/entrada.ts', 4, 5, 4, 4)`,
+      `INSERT INTO exportacoes_indice
+        (snapshot_id, id_fato, arquivo_origem_id, nome_exportado, tipo, evidencia_caminho,
+         evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna)
+       VALUES ($1, 'exportacao:ordem-invalida', $2, 'x', 'nomeada', 'src/entrada.ts', 4, 5, 4, 4)`,
+      `INSERT INTO relacoes_importacao_indice
+        (snapshot_id, id_fato, tipo, arquivo_origem_id, destino_tipo, destino_especificador,
+         evidencia_caminho, evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna)
+       VALUES ($1, 'relacao:ordem-invalida', 'importa', $2, 'externo', 'react', 'src/entrada.ts', 4, 5, 4, 4)`,
+      `INSERT INTO diagnosticos_indice
+        (snapshot_id, id_fato, codigo, categoria, arquivo_origem_id, evidencia_caminho,
+         evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna)
+       VALUES ($1, 'diagnostico:ordem-invalida', 'COMMONJS_NAO_SUPORTADO', 'limitacao', $2, 'src/entrada.ts', 4, 5, 4, 4)`,
+    ]
+
+    for (const sql of casos) {
+      await expect(pool.query(sql, [snapshotId, arquivoId])).rejects.toMatchObject({
+        code: '23514',
+      })
+    }
+  })
+
   it('não persiste conteúdo-fonte, AST, tokens ou stack trace', async () => {
     const tabelas = [
       'indices_estruturais',
@@ -284,6 +342,7 @@ function criarEntrada(
   snapshot: Awaited<ReturnType<typeof prepararSnapshot>>['snapshot'],
   leaseId: string,
   incluirArquivoExtra = false,
+  quantidadeSimbolos = 1,
 ): EntradaPersistenciaIndice {
   const arquivos = criarArquivosDoSnapshot(incluirArquivoExtra)
   return {
@@ -292,7 +351,7 @@ function criarEntrada(
     leaseId,
     agora,
     arquivos,
-    indice: criarIndice(snapshot, incluirArquivoExtra),
+    indice: criarIndice(snapshot, incluirArquivoExtra, quantidadeSimbolos),
   }
 }
 
@@ -311,6 +370,7 @@ function criarArquivosDoSnapshot(incluirArquivoExtra: boolean): ArquivoDoSnapsho
 function criarIndice(
   snapshot: Awaited<ReturnType<typeof prepararSnapshot>>['snapshot'],
   incluirArquivoExtra = false,
+  quantidadeSimbolos = 1,
 ): IndiceAnalise {
   const entrada = 'arquivo:src/entrada.ts'
   const interno = 'arquivo:src/interno.ts'
@@ -337,10 +397,13 @@ function criarIndice(
       referencia: snapshot.referencia,
     },
     arquivos,
-    simbolos: [{
-      id: 'simbolo:entrada', arquivoId: entrada, nome: 'entrada', tipo: 'funcao',
-      evidencia: evidencia('src/entrada.ts', 2),
-    }],
+    simbolos: Array.from({ length: quantidadeSimbolos }, (_, indice) => ({
+      id: indice === 0 ? 'simbolo:entrada' : `simbolo:entrada-${indice}`,
+      arquivoId: entrada,
+      nome: indice === 0 ? 'entrada' : `entrada${indice}`,
+      tipo: 'funcao' as const,
+      evidencia: evidencia('src/entrada.ts', indice + 2),
+    })),
     exportacoes: [
       {
         id: 'exportacao:interna', arquivoOrigemId: entrada, nomeExportado: 'interna',

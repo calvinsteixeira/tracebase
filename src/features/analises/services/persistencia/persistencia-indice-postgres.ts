@@ -20,6 +20,7 @@ import type {
 import type { SnapshotCicloVidaAnalise } from './ciclo-vida-analise'
 import {
   type EntradaPersistenciaIndice,
+  type IndicePersistido,
   type RepositorioPersistenciaIndice,
   validarIdentidadeSnapshotIndice,
   validarEntradaPersistenciaIndice,
@@ -107,6 +108,8 @@ interface LinhaDiagnostico {
   evidencia_fim_coluna: number
 }
 
+export const MAX_PARAMETROS_POR_LOTE = 500
+
 export function criarRepositorioPersistenciaIndicePostgres(
   pool: Pool,
 ): RepositorioPersistenciaIndice {
@@ -183,7 +186,10 @@ export function criarRepositorioPersistenciaIndicePostgres(
         }
 
         await cliente.query('COMMIT')
-        return { tipo: 'persistido', indice: clonarIndice(input.indice) }
+        return {
+          tipo: 'persistido',
+          indice: clonarPersistido({ indice: input.indice, arquivos: input.arquivos }),
+        }
       } catch (erro) {
         await cliente.query('ROLLBACK')
         throw erro
@@ -260,12 +266,12 @@ async function obterSnapshotPorId(
 async function carregarIndice(
   executor: Pick<Pool | PoolClient, 'query'>,
   snapshot: LinhaSnapshotPersistencia,
-): Promise<IndiceAnalise | null> {
-  const indiceResultado = await executor.query<LinhaIndice>(
+): Promise<IndicePersistido | null> {
+  const indiceLinhaResultado = await executor.query<LinhaIndice>(
     `SELECT id::text AS indice_id, parcial FROM indices_estruturais WHERE snapshot_id = $1::bigint`,
     [snapshot.id],
   )
-  const indice = indiceResultado.rows[0]
+  const indice = indiceLinhaResultado.rows[0]
   if (!indice) return null
 
   const arquivos = await executor.query<LinhaArquivo>(
@@ -289,7 +295,7 @@ async function carregarIndice(
     [snapshot.id],
   )
 
-  return {
+  const indiceResultado: IndiceAnalise = {
     snapshot: {
       idPublico: snapshot.id_publico,
       repositorio: {
@@ -341,6 +347,14 @@ async function carregarIndice(
     })),
     parcial: indice.parcial,
   }
+
+  return {
+    indice: indiceResultado,
+    arquivos: arquivos.rows.map((arquivo) => ({
+      caminho: arquivo.caminho,
+      blobSha: arquivo.blob_sha,
+    })),
+  }
 }
 
 async function inserirIndice(
@@ -380,48 +394,113 @@ async function inserirArquivos(
   indice: IndiceAnalise,
 ) {
   const porCaminho = new Map(arquivos.map((arquivo) => [arquivo.caminho, arquivo]))
-  for (const arquivo of indice.arquivos) {
+  const linhas = indice.arquivos.map((arquivo) => {
     const origem = porCaminho.get(arquivo.caminho)
     if (!origem) throw new Error('Arquivo do índice sem origem.')
-    await cliente.query(
-      `INSERT INTO arquivos_indice (indice_id, snapshot_id, id_fato, caminho, tipo, blob_sha) VALUES ($1::bigint, $2::bigint, $3, $4, $5, $6)`,
-      [indiceId, snapshotId, arquivo.id, arquivo.caminho, arquivo.tipo, origem.blobSha],
-    )
-  }
+    return [indiceId, snapshotId, arquivo.id, arquivo.caminho, arquivo.tipo, origem.blobSha]
+  })
+  await inserirEmLotes(
+    cliente,
+    'arquivos_indice',
+    ['indice_id', 'snapshot_id', 'id_fato', 'caminho', 'tipo', 'blob_sha'],
+    linhas,
+  )
 }
 
 async function inserirSimbolos(cliente: PoolClient, snapshotId: string, indice: IndiceAnalise) {
-  for (const simbolo of indice.simbolos) {
-    await cliente.query(
-      `INSERT INTO simbolos_indice (snapshot_id, id_fato, arquivo_id, nome, tipo, evidencia_caminho, evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna) VALUES ($1::bigint, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [snapshotId, simbolo.id, simbolo.arquivoId, simbolo.nome, simbolo.tipo, ...parametrosEvidencia(simbolo.evidencia)],
-    )
-  }
+  await inserirEmLotes(
+    cliente,
+    'simbolos_indice',
+    ['snapshot_id', 'id_fato', 'arquivo_id', 'nome', 'tipo', 'evidencia_caminho', 'evidencia_inicio_linha', 'evidencia_inicio_coluna', 'evidencia_fim_linha', 'evidencia_fim_coluna'],
+    indice.simbolos.map((simbolo) => [
+      snapshotId,
+      simbolo.id,
+      simbolo.arquivoId,
+      simbolo.nome,
+      simbolo.tipo,
+      ...parametrosEvidencia(simbolo.evidencia),
+    ]),
+  )
 }
 
 async function inserirExportacoes(cliente: PoolClient, snapshotId: string, indice: IndiceAnalise) {
-  for (const exportacao of indice.exportacoes) {
-    await cliente.query(
-      `INSERT INTO exportacoes_indice (snapshot_id, id_fato, arquivo_origem_id, nome_exportado, tipo, nome_local, destino_tipo, destino_caminho, destino_especificador, destino_expressao, evidencia_caminho, evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna) VALUES ($1::bigint, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-      [snapshotId, exportacao.id, exportacao.arquivoOrigemId, exportacao.nomeExportado, exportacao.tipo, exportacao.nomeLocal ?? null, ...parametrosDestino(exportacao.destino), ...parametrosEvidencia(exportacao.evidencia)],
-    )
-  }
+  await inserirEmLotes(
+    cliente,
+    'exportacoes_indice',
+    ['snapshot_id', 'id_fato', 'arquivo_origem_id', 'nome_exportado', 'tipo', 'nome_local', 'destino_tipo', 'destino_caminho', 'destino_especificador', 'destino_expressao', 'evidencia_caminho', 'evidencia_inicio_linha', 'evidencia_inicio_coluna', 'evidencia_fim_linha', 'evidencia_fim_coluna'],
+    indice.exportacoes.map((exportacao) => [
+      snapshotId,
+      exportacao.id,
+      exportacao.arquivoOrigemId,
+      exportacao.nomeExportado,
+      exportacao.tipo,
+      exportacao.nomeLocal ?? null,
+      ...parametrosDestino(exportacao.destino),
+      ...parametrosEvidencia(exportacao.evidencia),
+    ]),
+  )
 }
 
 async function inserirRelacoes(cliente: PoolClient, snapshotId: string, indice: IndiceAnalise) {
-  for (const relacao of indice.relacoesImportacao) {
-    await cliente.query(
-      `INSERT INTO relacoes_importacao_indice (snapshot_id, id_fato, tipo, arquivo_origem_id, destino_tipo, destino_caminho, destino_especificador, destino_expressao, evidencia_caminho, evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna) VALUES ($1::bigint, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-      [snapshotId, relacao.id, relacao.tipo, relacao.arquivoOrigemId, ...parametrosDestino(relacao.destino), ...parametrosEvidencia(relacao.evidencia)],
-    )
-  }
+  await inserirEmLotes(
+    cliente,
+    'relacoes_importacao_indice',
+    ['snapshot_id', 'id_fato', 'tipo', 'arquivo_origem_id', 'destino_tipo', 'destino_caminho', 'destino_especificador', 'destino_expressao', 'evidencia_caminho', 'evidencia_inicio_linha', 'evidencia_inicio_coluna', 'evidencia_fim_linha', 'evidencia_fim_coluna'],
+    indice.relacoesImportacao.map((relacao) => [
+      snapshotId,
+      relacao.id,
+      relacao.tipo,
+      relacao.arquivoOrigemId,
+      ...parametrosDestino(relacao.destino),
+      ...parametrosEvidencia(relacao.evidencia),
+    ]),
+  )
 }
 
 async function inserirDiagnosticos(cliente: PoolClient, snapshotId: string, indice: IndiceAnalise) {
-  for (const diagnostico of indice.diagnosticos) {
+  await inserirEmLotes(
+    cliente,
+    'diagnosticos_indice',
+    ['snapshot_id', 'id_fato', 'codigo', 'categoria', 'arquivo_origem_id', 'evidencia_caminho', 'evidencia_inicio_linha', 'evidencia_inicio_coluna', 'evidencia_fim_linha', 'evidencia_fim_coluna'],
+    indice.diagnosticos.map((diagnostico) => [
+      snapshotId,
+      diagnostico.id,
+      diagnostico.codigo,
+      diagnostico.categoria,
+      diagnostico.arquivoOrigemId ?? null,
+      ...parametrosEvidencia(diagnostico.evidencia),
+    ]),
+  )
+}
+
+type TabelaIndice =
+  | 'arquivos_indice'
+  | 'simbolos_indice'
+  | 'exportacoes_indice'
+  | 'relacoes_importacao_indice'
+  | 'diagnosticos_indice'
+
+export async function inserirEmLotes(
+  cliente: Pick<PoolClient, 'query'>,
+  tabela: TabelaIndice,
+  colunas: readonly string[],
+  linhas: readonly (readonly unknown[])[],
+) {
+  if (linhas.length === 0) return
+
+  const linhasPorLote = Math.max(1, Math.floor(MAX_PARAMETROS_POR_LOTE / colunas.length))
+  for (let inicio = 0; inicio < linhas.length; inicio += linhasPorLote) {
+    const lote = linhas.slice(inicio, inicio + linhasPorLote)
+    const valores = lote.flatMap((linha) => linha)
+    const placeholders = lote
+      .map((_, indiceLinha) =>
+        `(${colunas.map((_, indiceColuna) => `$${indiceLinha * colunas.length + indiceColuna + 1}`).join(', ')})`,
+      )
+      .join(', ')
+
     await cliente.query(
-      `INSERT INTO diagnosticos_indice (snapshot_id, id_fato, codigo, categoria, arquivo_origem_id, evidencia_caminho, evidencia_inicio_linha, evidencia_inicio_coluna, evidencia_fim_linha, evidencia_fim_coluna) VALUES ($1::bigint, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [snapshotId, diagnostico.id, diagnostico.codigo, diagnostico.categoria, diagnostico.arquivoOrigemId ?? null, ...parametrosEvidencia(diagnostico.evidencia)],
+      `INSERT INTO ${tabela} (${colunas.join(', ')}) VALUES ${placeholders}`,
+      valores,
     )
   }
 }
@@ -477,6 +556,13 @@ function mapearEvidencia(
     caminhoArquivo: linha.evidencia_caminho,
     inicio: { linha: linha.evidencia_inicio_linha, coluna: linha.evidencia_inicio_coluna },
     fim: { linha: linha.evidencia_fim_linha, coluna: linha.evidencia_fim_coluna },
+  }
+}
+
+function clonarPersistido(persistido: IndicePersistido): IndicePersistido {
+  return {
+    indice: clonarIndice(persistido.indice),
+    arquivos: persistido.arquivos.map((arquivo) => ({ ...arquivo })),
   }
 }
 

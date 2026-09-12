@@ -23,15 +23,21 @@ describe('persistência do índice em memória', () => {
 
     const resultado = await preparado.persistencia.salvarEConcluir(entrada)
 
-    expect(resultado).toMatchObject({ tipo: 'persistido', indice: entrada.indice })
-    expect(await preparado.persistencia.buscarPorSnapshotConcluido(preparado.snapshot.idPublico))
-      .toEqual(entrada.indice)
+    expect(resultado).toMatchObject({
+      tipo: 'persistido',
+      indice: { indice: entrada.indice, arquivos: entrada.arquivos },
+    })
+    const recuperado = await preparado.persistencia.buscarPorSnapshotConcluido(
+      preparado.snapshot.idPublico,
+    )
+    expect(recuperado?.indice).toEqual(entrada.indice)
+    expect(recuperado?.arquivos).toEqual(entrada.arquivos)
     expect(
       await preparado.persistencia.buscarPorRepositorioECommit({
         url: entrada.indice.snapshot.repositorio.url,
         commitSha: entrada.indice.snapshot.commitSha,
       }),
-    ).toEqual(entrada.indice)
+    ).toEqual({ indice: entrada.indice, arquivos: entrada.arquivos })
     expect(await preparado.ciclo.buscarPorIdPublico(preparado.snapshot.idPublico)).toMatchObject({
       estado: 'concluido',
       leaseId: null,
@@ -53,7 +59,10 @@ describe('persistência do índice em memória', () => {
       indice: { ...entrada.indice, parcial: false },
     })
 
-    expect(repetido).toMatchObject({ tipo: 'ja_concluido', indice: entrada.indice })
+    expect(repetido).toMatchObject({
+      tipo: 'ja_concluido',
+      indice: { indice: entrada.indice, arquivos: entrada.arquivos },
+    })
     expect(preparado.estado.indices.size).toBe(1)
   })
 
@@ -128,8 +137,8 @@ describe('persistência do índice em memória', () => {
       url: dadosBase.repositorio.url,
       commitSha: 'b'.repeat(40),
     })
-    expect(indicePrimeiro?.arquivos[0]?.id).toBe(indiceSegundo?.arquivos[0]?.id)
-    expect(indicePrimeiro?.snapshot.idPublico).not.toBe(indiceSegundo?.snapshot.idPublico)
+    expect(indicePrimeiro?.arquivos[0]?.caminho).toBe(indiceSegundo?.arquivos[0]?.caminho)
+    expect(indicePrimeiro?.indice.snapshot.idPublico).not.toBe(indiceSegundo?.indice.snapshot.idPublico)
   })
 
   it('valida blobs, caminhos, identificadores, destinos e evidências antes de salvar', async () => {
@@ -201,6 +210,87 @@ describe('persistência do índice em memória', () => {
     expect(await preparado.ciclo.buscarPorIdPublico(preparado.snapshot.idPublico)).toMatchObject({
       estado: 'processando',
     })
+  })
+
+  it('rejeita intervalos de evidência invertidos em todas as estruturas e aceita os válidos', async () => {
+    const preparado = await preparar()
+    const entrada = criarEntrada(preparado.snapshot, preparado.leaseId)
+    const evidenciaInvertida = (evidencia: typeof entrada.indice.diagnosticos[number]['evidencia']) => ({
+      ...evidencia,
+      fim: { linha: evidencia.inicio.linha - 1, coluna: evidencia.fim.coluna },
+    })
+    const evidenciaMesmaLinhaInvertida = (
+      evidencia: typeof entrada.indice.diagnosticos[number]['evidencia'],
+    ) => ({
+      ...evidencia,
+      fim: { linha: evidencia.inicio.linha, coluna: evidencia.inicio.coluna - 1 },
+    })
+    const casos = [
+      {
+        ...entrada.indice,
+        simbolos: entrada.indice.simbolos.map((fato) => ({
+          ...fato,
+          evidencia: evidenciaInvertida(fato.evidencia),
+        })),
+      },
+      {
+        ...entrada.indice,
+        exportacoes: entrada.indice.exportacoes.map((fato) => ({
+          ...fato,
+          evidencia: evidenciaInvertida(fato.evidencia),
+        })),
+      },
+      {
+        ...entrada.indice,
+        relacoesImportacao: entrada.indice.relacoesImportacao.map((fato) => ({
+          ...fato,
+          evidencia: evidenciaInvertida(fato.evidencia),
+        })),
+      },
+      {
+        ...entrada.indice,
+        diagnosticos: entrada.indice.diagnosticos.map((fato) => ({
+          ...fato,
+          evidencia: evidenciaInvertida(fato.evidencia),
+        })),
+      },
+    ]
+
+    for (const indice of casos) {
+      await expect(preparado.persistencia.salvarEConcluir({ ...entrada, indice })).rejects.toMatchObject({
+        codigo: 'EVIDENCIA_INVALIDA',
+      })
+    }
+
+    const intervaloUmaLinha = {
+      ...entrada.indice,
+      diagnosticos: entrada.indice.diagnosticos.map((fato) => ({
+        ...fato,
+        evidencia: {
+          ...fato.evidencia,
+          inicio: { linha: 9, coluna: 4 },
+          fim: { linha: 9, coluna: 8 },
+        },
+      })),
+    }
+    await expect(
+      preparado.persistencia.salvarEConcluir({ ...entrada, indice: intervaloUmaLinha }),
+    ).resolves.toMatchObject({ tipo: 'persistido' })
+
+    const outroPreparado = await preparar()
+    const mesmaLinhaInvalida = {
+      ...criarEntrada(outroPreparado.snapshot, outroPreparado.leaseId).indice,
+      diagnosticos: entrada.indice.diagnosticos.map((fato) => ({
+        ...fato,
+        evidencia: evidenciaMesmaLinhaInvertida(fato.evidencia),
+      })),
+    }
+    await expect(
+      outroPreparado.persistencia.salvarEConcluir({
+        ...criarEntrada(outroPreparado.snapshot, outroPreparado.leaseId),
+        indice: mesmaLinhaInvalida,
+      }),
+    ).rejects.toMatchObject({ codigo: 'EVIDENCIA_INVALIDA' })
   })
 
   it('retorna inexistente e não permite concluir um snapshot sem processamento adquirido', async () => {

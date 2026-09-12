@@ -23,7 +23,7 @@ export function criarRepositorioPersistenciaIndiceEmMemoria(
       const indiceExistente = estado.indices.get(input.snapshotIdPublico)
       if (snapshot.estado === 'concluido') {
         if (!indiceExistente) return { tipo: 'estado_incompativel' }
-        return { tipo: 'ja_concluido', indice: clonarIndice(indiceExistente) }
+        return { tipo: 'ja_concluido', indice: clonarPersistido(indiceExistente) }
       }
       if (snapshot.tentativa !== input.tentativa) {
         return { tipo: 'tentativa_desatualizada' }
@@ -33,11 +33,11 @@ export function criarRepositorioPersistenciaIndiceEmMemoria(
       }
       if (!leaseValido(snapshot, input)) return { tipo: 'lease_invalido' }
 
-      const indice = clonarIndice(input.indice)
+      const indice = clonarPersistido({ indice: input.indice, arquivos: input.arquivos })
       estado.indices.set(input.snapshotIdPublico, indice)
       concluirSnapshot(snapshot, input)
 
-      return { tipo: 'persistido', indice: clonarIndice(indice) }
+      return { tipo: 'persistido', indice: clonarPersistido(indice) }
     },
 
     async buscarPorSnapshotConcluido(idPublico) {
@@ -45,7 +45,7 @@ export function criarRepositorioPersistenciaIndiceEmMemoria(
       if (!snapshot || snapshot.estado !== 'concluido') return null
 
       const indice = estado.indices.get(idPublico)
-      return indice ? clonarIndice(indice) : null
+      return indice ? clonarPersistido(indice) : null
     },
 
     async buscarPorRepositorioECommit(input) {
@@ -59,7 +59,7 @@ export function criarRepositorioPersistenciaIndiceEmMemoria(
         }
 
         const indice = estado.indices.get(snapshot.idPublico)
-        if (indice) return clonarIndice(indice)
+        if (indice) return clonarPersistido(indice)
       }
 
       return null
@@ -90,33 +90,39 @@ function concluirSnapshot(
   snapshot.falha = null
 }
 
-function clonarIndice(indice: IndiceAnalise): IndiceAnalise {
+function clonarPersistido(indice: {
+  indice: IndiceAnalise
+  arquivos: EntradaPersistenciaIndice['arquivos']
+}) {
   return {
-    snapshot: {
-      ...indice.snapshot,
-      repositorio: { ...indice.snapshot.repositorio },
+    indice: {
+      snapshot: {
+        ...indice.indice.snapshot,
+        repositorio: { ...indice.indice.snapshot.repositorio },
+      },
+      arquivos: indice.indice.arquivos.map((arquivo) => ({ ...arquivo })),
+      simbolos: indice.indice.simbolos.map((simbolo) => ({
+        ...simbolo,
+        evidencia: clonarEvidencia(simbolo.evidencia),
+      })),
+      exportacoes: indice.indice.exportacoes.map((exportacao) => ({
+        ...exportacao,
+        ...(exportacao.nomeLocal ? { nomeLocal: exportacao.nomeLocal } : {}),
+        ...(exportacao.destino ? { destino: { ...exportacao.destino } } : {}),
+        evidencia: clonarEvidencia(exportacao.evidencia),
+      })),
+      relacoesImportacao: indice.indice.relacoesImportacao.map((relacao) => ({
+        ...relacao,
+        destino: { ...relacao.destino },
+        evidencia: clonarEvidencia(relacao.evidencia),
+      })),
+      diagnosticos: indice.indice.diagnosticos.map((diagnostico) => ({
+        ...diagnostico,
+        evidencia: clonarEvidencia(diagnostico.evidencia),
+      })),
+      parcial: indice.indice.parcial,
     },
     arquivos: indice.arquivos.map((arquivo) => ({ ...arquivo })),
-    simbolos: indice.simbolos.map((simbolo) => ({
-      ...simbolo,
-      evidencia: clonarEvidencia(simbolo.evidencia),
-    })),
-    exportacoes: indice.exportacoes.map((exportacao) => ({
-      ...exportacao,
-      ...(exportacao.nomeLocal ? { nomeLocal: exportacao.nomeLocal } : {}),
-      ...(exportacao.destino ? { destino: { ...exportacao.destino } } : {}),
-      evidencia: clonarEvidencia(exportacao.evidencia),
-    })),
-    relacoesImportacao: indice.relacoesImportacao.map((relacao) => ({
-      ...relacao,
-      destino: { ...relacao.destino },
-      evidencia: clonarEvidencia(relacao.evidencia),
-    })),
-    diagnosticos: indice.diagnosticos.map((diagnostico) => ({
-      ...diagnostico,
-      evidencia: clonarEvidencia(diagnostico.evidencia),
-    })),
-    parcial: indice.parcial,
   }
 }
 

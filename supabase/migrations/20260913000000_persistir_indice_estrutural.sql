@@ -36,6 +36,13 @@ CREATE TABLE simbolos_indice (
   evidencia_inicio_coluna INTEGER NOT NULL CHECK (evidencia_inicio_coluna > 0),
   evidencia_fim_linha INTEGER NOT NULL CHECK (evidencia_fim_linha > 0),
   evidencia_fim_coluna INTEGER NOT NULL CHECK (evidencia_fim_coluna > 0),
+  CONSTRAINT simbolos_indice_evidencia_ordenada CHECK (
+    evidencia_fim_linha > evidencia_inicio_linha
+    OR (
+      evidencia_fim_linha = evidencia_inicio_linha
+      AND evidencia_fim_coluna >= evidencia_inicio_coluna
+    )
+  ),
   CONSTRAINT simbolos_indice_id_fato_unico UNIQUE (snapshot_id, id_fato),
   CONSTRAINT simbolos_indice_tipo_valido CHECK (
     tipo IN ('funcao', 'classe', 'constante', 'componente', 'interface', 'tipo')
@@ -67,6 +74,13 @@ CREATE TABLE exportacoes_indice (
   evidencia_inicio_coluna INTEGER NOT NULL CHECK (evidencia_inicio_coluna > 0),
   evidencia_fim_linha INTEGER NOT NULL CHECK (evidencia_fim_linha > 0),
   evidencia_fim_coluna INTEGER NOT NULL CHECK (evidencia_fim_coluna > 0),
+  CONSTRAINT exportacoes_indice_evidencia_ordenada CHECK (
+    evidencia_fim_linha > evidencia_inicio_linha
+    OR (
+      evidencia_fim_linha = evidencia_inicio_linha
+      AND evidencia_fim_coluna >= evidencia_inicio_coluna
+    )
+  ),
   CONSTRAINT exportacoes_indice_id_fato_unico UNIQUE (snapshot_id, id_fato),
   CONSTRAINT exportacoes_indice_tipo_valido CHECK (
     tipo IN ('nomeada', 'padrao', 'reexportacao')
@@ -125,6 +139,13 @@ CREATE TABLE relacoes_importacao_indice (
   evidencia_inicio_coluna INTEGER NOT NULL CHECK (evidencia_inicio_coluna > 0),
   evidencia_fim_linha INTEGER NOT NULL CHECK (evidencia_fim_linha > 0),
   evidencia_fim_coluna INTEGER NOT NULL CHECK (evidencia_fim_coluna > 0),
+  CONSTRAINT relacoes_importacao_indice_evidencia_ordenada CHECK (
+    evidencia_fim_linha > evidencia_inicio_linha
+    OR (
+      evidencia_fim_linha = evidencia_inicio_linha
+      AND evidencia_fim_coluna >= evidencia_inicio_coluna
+    )
+  ),
   CONSTRAINT relacoes_importacao_indice_id_fato_unico UNIQUE (snapshot_id, id_fato),
   CONSTRAINT relacoes_importacao_indice_tipo_valido CHECK (tipo = 'importa'),
   CONSTRAINT relacoes_importacao_indice_destino_valido CHECK (
@@ -172,6 +193,13 @@ CREATE TABLE diagnosticos_indice (
   evidencia_inicio_coluna INTEGER NOT NULL CHECK (evidencia_inicio_coluna > 0),
   evidencia_fim_linha INTEGER NOT NULL CHECK (evidencia_fim_linha > 0),
   evidencia_fim_coluna INTEGER NOT NULL CHECK (evidencia_fim_coluna > 0),
+  CONSTRAINT diagnosticos_indice_evidencia_ordenada CHECK (
+    evidencia_fim_linha > evidencia_inicio_linha
+    OR (
+      evidencia_fim_linha = evidencia_inicio_linha
+      AND evidencia_fim_coluna >= evidencia_inicio_coluna
+    )
+  ),
   CONSTRAINT diagnosticos_indice_id_fato_unico UNIQUE (snapshot_id, id_fato),
   CONSTRAINT diagnosticos_indice_codigo_valido CHECK (
     codigo IN ('ERRO_SINTATICO', 'COMMONJS_NAO_SUPORTADO', 'IMPORT_DINAMICO_NAO_RESOLVIDO')

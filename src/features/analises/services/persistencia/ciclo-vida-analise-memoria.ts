@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import type { IndiceAnalise } from '../../analises.types'
+import type { IndicePersistido } from './persistencia-indice'
 import type {
   DadosCriacaoSnapshotAnalise,
   FalhaAnaliseParaRegistro,
@@ -11,7 +11,7 @@ import type {
 export interface EstadoCicloVidaAnaliseEmMemoria {
   snapshots: Map<string, SnapshotCicloVidaAnalise>
   chaves: Map<string, string>
-  indices: Map<string, IndiceAnalise>
+  indices: Map<string, IndicePersistido>
 }
 
 export function criarEstadoCicloVidaAnaliseEmMemoria(): EstadoCicloVidaAnaliseEmMemoria {

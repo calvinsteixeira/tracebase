@@ -29,9 +29,14 @@ export interface EntradaPersistenciaIndice {
   arquivos: ArquivoDoSnapshot[]
 }
 
+export interface IndicePersistido {
+  indice: IndiceAnalise
+  arquivos: ArquivoDoSnapshot[]
+}
+
 export type ResultadoPersistenciaIndice =
-  | { tipo: 'persistido'; indice: IndiceAnalise }
-  | { tipo: 'ja_concluido'; indice: IndiceAnalise }
+  | { tipo: 'persistido'; indice: IndicePersistido }
+  | { tipo: 'ja_concluido'; indice: IndicePersistido }
   | { tipo: 'inexistente' }
   | { tipo: 'tentativa_desatualizada' }
   | { tipo: 'lease_invalido' }
@@ -39,11 +44,11 @@ export type ResultadoPersistenciaIndice =
 
 export interface RepositorioPersistenciaIndice {
   salvarEConcluir(input: EntradaPersistenciaIndice): Promise<ResultadoPersistenciaIndice>
-  buscarPorSnapshotConcluido(idPublico: string): Promise<IndiceAnalise | null>
+  buscarPorSnapshotConcluido(idPublico: string): Promise<IndicePersistido | null>
   buscarPorRepositorioECommit(input: {
     url: string
     commitSha: string
-  }): Promise<IndiceAnalise | null>
+  }): Promise<IndicePersistido | null>
 }
 
 export type CodigoErroValidacaoIndice =
@@ -205,8 +210,7 @@ function validarArquivo(id: string, idsArquivos: Set<string>) {
 function validarEvidencia(evidencia: Evidencia, arquivosPorCaminho: Map<string, string>) {
   if (
     !arquivosPorCaminho.has(evidencia.caminhoArquivo) ||
-    !posicaoValida(evidencia.inicio) ||
-    !posicaoValida(evidencia.fim)
+    !intervaloValido(evidencia)
   ) {
     throw new ErroValidacaoIndice('EVIDENCIA_INVALIDA')
   }
@@ -231,6 +235,14 @@ function validarDestino(
 function posicaoValida(posicao: { linha: number; coluna: number }) {
   return Number.isInteger(posicao.linha) && posicao.linha > 0 &&
     Number.isInteger(posicao.coluna) && posicao.coluna > 0
+}
+
+function intervaloValido(evidencia: Evidencia) {
+  if (!posicaoValida(evidencia.inicio) || !posicaoValida(evidencia.fim)) return false
+
+  return evidencia.fim.linha > evidencia.inicio.linha ||
+    (evidencia.fim.linha === evidencia.inicio.linha &&
+      evidencia.fim.coluna >= evidencia.inicio.coluna)
 }
 
 function eSha(valor: string) {
