@@ -48,17 +48,23 @@ export function criarCicloVidaAnaliseEmMemoria(): RepositorioCicloVidaAnalise {
 
     async adquirirProcessamento(input) {
       const snapshot = snapshots.get(input.idPublico)
-      if (!snapshot || input.leaseExpiraEm <= input.agora) return null
-      if (snapshot.tentativa !== input.tentativa) return null
+      if (!snapshot) return { tipo: 'inexistente' }
+      if (snapshot.estado === 'concluido') return { tipo: 'concluido' }
+      if (snapshot.tentativa !== input.tentativa) {
+        return { tipo: 'tentativa_desatualizada' }
+      }
+      if (input.leaseExpiraEm <= input.agora) return { tipo: 'estado_incompativel' }
 
       const leaseVencido =
         snapshot.estado === 'processando' &&
         snapshot.leaseExpiraEm !== null &&
         snapshot.leaseExpiraEm <= input.agora
-      const podeAdquirir =
-        snapshot.estado === 'aguardando' || leaseVencido
-
-      if (!podeAdquirir) return null
+      if (snapshot.estado === 'processando' && !leaseVencido) {
+        return { tipo: 'ocupado' }
+      }
+      if (snapshot.estado !== 'aguardando' && !leaseVencido) {
+        return { tipo: 'estado_incompativel' }
+      }
 
       const leaseId = randomUUID()
       snapshot.estado = 'processando'
@@ -69,7 +75,15 @@ export function criarCicloVidaAnaliseEmMemoria(): RepositorioCicloVidaAnalise {
       snapshot.finalizadoEm = null
       snapshot.leaseId = leaseId
       snapshot.leaseExpiraEm = input.leaseExpiraEm
-      return clonarSnapshot(snapshot)
+      const snapshotClonado = clonarSnapshot(snapshot)
+      return {
+        tipo: 'adquirido',
+        snapshot: snapshotClonado,
+        lease: {
+          id: leaseId,
+          expiraEm: input.leaseExpiraEm,
+        },
+      }
     },
 
     async renovarLease(input) {
@@ -117,7 +131,13 @@ export function criarCicloVidaAnaliseEmMemoria(): RepositorioCicloVidaAnalise {
 
     async iniciarNovaTentativa(input) {
       const snapshot = snapshots.get(input.idPublico)
-      if (!snapshot || snapshot.estado !== 'falha') return null
+      if (
+        !snapshot ||
+        snapshot.estado !== 'falha' ||
+        snapshot.tentativa !== input.tentativaEsperada
+      ) {
+        return null
+      }
 
       snapshot.estado = 'aguardando'
       snapshot.etapa = null

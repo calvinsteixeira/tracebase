@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import type { DadosSnapshotAnalise } from './ciclo-vida-analise'
+import type {
+  DadosSnapshotAnalise,
+  ResultadoAquisicaoProcessamento,
+} from './ciclo-vida-analise'
 import { criarCicloVidaAnaliseEmMemoria } from './ciclo-vida-analise-memoria'
 
 const base: DadosSnapshotAnalise = {
@@ -95,7 +98,7 @@ describe('ciclo de vida da análise em memória', () => {
         agora: '2026-09-12T12:00:03.000Z',
         leaseExpiraEm: expiracaoInicial,
       }),
-    ).toBeNull()
+    ).toMatchObject({ tipo: 'estado_incompativel' })
   })
 
   it('faz aquisição e falha de agendamento concorrerem com um único vencedor', async () => {
@@ -104,7 +107,7 @@ describe('ciclo de vida da análise em memória', () => {
       ...base,
       commitSha: 'c'.repeat(40),
     })
-    const resultadosComAquisiçãoPrimeiro = await Promise.all([
+    const [aquisição, falhaDeAgendamento] = await Promise.all([
       repositorio.adquirirProcessamento({
         idPublico: adquiridoPrimeiro.idPublico,
         tentativa: 1,
@@ -123,16 +126,17 @@ describe('ciclo de vida da análise em memória', () => {
       }),
     ])
 
-    expect(resultadosComAquisiçãoPrimeiro.filter(Boolean)).toHaveLength(1)
-    expect((await repositorio.buscarPorIdPublico(adquiridoPrimeiro.idPublico))?.estado).toBe(
-      'processando',
-    )
+    expect(
+      Number(aquisição.tipo === 'adquirido') + Number(Boolean(falhaDeAgendamento)),
+    ).toBe(1)
+    expect(aquisição.tipo).toBe('adquirido')
+    expect(falhaDeAgendamento).toBeNull()
 
     const falhaPrimeiro = await repositorio.criarOuReutilizar({
       ...base,
       commitSha: 'd'.repeat(40),
     })
-    const resultadosComFalhaPrimeiro = await Promise.all([
+    const [falhaDeAgendamentoPrimeiro, aquisiçãoDepois] = await Promise.all([
       repositorio.registrarFalhaAgendamento({
         idPublico: falhaPrimeiro.idPublico,
         tentativa: 1,
@@ -151,8 +155,11 @@ describe('ciclo de vida da análise em memória', () => {
       }),
     ])
 
-    expect(resultadosComFalhaPrimeiro.filter(Boolean)).toHaveLength(1)
-    expect((await repositorio.buscarPorIdPublico(falhaPrimeiro.idPublico))?.estado).toBe('falha')
+    expect(
+      Number(Boolean(falhaDeAgendamentoPrimeiro)) + Number(aquisiçãoDepois.tipo === 'adquirido'),
+    ).toBe(1)
+    expect(falhaDeAgendamentoPrimeiro).not.toBeNull()
+    expect(aquisiçãoDepois).toMatchObject({ tipo: 'estado_incompativel' })
   })
 
   it('permite somente um consumidor na aquisição concorrente da tentativa atual', async () => {
@@ -169,13 +176,16 @@ describe('ciclo de vida da análise em memória', () => {
         }),
       ),
     )
-    const adquiridos = resultados.filter((resultado) => resultado !== null)
+    const adquiridos = resultados.filter((resultado) => resultado.tipo === 'adquirido')
 
     expect(adquiridos).toHaveLength(1)
     expect(adquiridos[0]).toMatchObject({
-      estado: 'processando',
-      etapa: 'preparacao',
-      tentativa: 1,
+      tipo: 'adquirido',
+      snapshot: {
+        estado: 'processando',
+        etapa: 'preparacao',
+        tentativa: 1,
+      },
     })
   })
 
@@ -196,43 +206,87 @@ describe('ciclo de vida da análise em memória', () => {
         agora: '2026-09-12T12:00:30.000Z',
         leaseExpiraEm: '2026-09-12T12:02:00.000Z',
       }),
-    ).resolves.toBeNull()
+    ).resolves.toMatchObject({ tipo: 'ocupado' })
 
-    const reassumido = await repositorio.adquirirProcessamento({
+    const reassumido = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T12:02:00.000Z',
       leaseExpiraEm: '2026-09-12T12:03:00.000Z',
-    })
+    }))
 
-    expect(reassumido?.leaseId).toBeTruthy()
-    expect(reassumido?.leaseId).not.toBe(adquirido?.leaseId)
-    expect(reassumido?.tentativaIniciadaEm).toBe('2026-09-12T12:00:10.000Z')
+    const adquiridoInicial = exigirAquisicao(adquirido)
+    expect(reassumido.lease.id).toBeTruthy()
+    expect(reassumido.lease.id).not.toBe(adquiridoInicial.lease.id)
+    expect(reassumido.snapshot.tentativaIniciadaEm).toBe('2026-09-12T12:00:10.000Z')
+  })
+
+  it('diferencia snapshot inexistente, tentativa antiga e processamento ocupado', async () => {
+    const repositorio = criarCicloVidaAnaliseEmMemoria()
+
+    await expect(
+      repositorio.adquirirProcessamento({
+        idPublico: '00000000-0000-4000-8000-000000000000',
+        tentativa: 1,
+        agora: '2026-09-12T12:00:00.000Z',
+        leaseExpiraEm: expiracaoInicial,
+      }),
+    ).resolves.toMatchObject({ tipo: 'inexistente' })
+
+    const criado = await repositorio.criarOuReutilizar({
+      ...base,
+      commitSha: 'e'.repeat(40),
+    })
+    await expect(
+      repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 0,
+        agora: '2026-09-12T12:00:00.000Z',
+        leaseExpiraEm: expiracaoInicial,
+      }),
+    ).resolves.toMatchObject({ tipo: 'tentativa_desatualizada' })
+
+    exigirAquisicao(
+      await repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 1,
+        agora: '2026-09-12T12:00:01.000Z',
+        leaseExpiraEm: expiracaoInicial,
+      }),
+    )
+    await expect(
+      repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 1,
+        agora: '2026-09-12T12:00:02.000Z',
+        leaseExpiraEm: expiracaoInicial,
+      }),
+    ).resolves.toMatchObject({ tipo: 'ocupado' })
   })
 
   it('recusa tentativa anterior e qualquer operação com lease antigo', async () => {
     const repositorio = criarCicloVidaAnaliseEmMemoria()
     const criado = await repositorio.criarOuReutilizar(base)
-    const primeiro = await repositorio.adquirirProcessamento({
+    const primeiro = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T12:00:10.000Z',
       leaseExpiraEm: expiracaoInicial,
-    })
-    const segundo = await repositorio.adquirirProcessamento({
+    }))
+    const segundo = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T12:02:00.000Z',
       leaseExpiraEm: '2026-09-12T12:03:00.000Z',
-    })
+    }))
 
-    expect(primeiro?.leaseId).toBeTruthy()
-    expect(segundo?.leaseId).toBeTruthy()
+    expect(primeiro.lease.id).toBeTruthy()
+    expect(segundo.lease.id).toBeTruthy()
     await expect(
       repositorio.renovarLease({
         idPublico: criado.idPublico,
         tentativa: 1,
-        leaseId: primeiro?.leaseId ?? '',
+        leaseId: primeiro.lease.id,
         agora: '2026-09-12T12:02:01.000Z',
         leaseExpiraEm: '2026-09-12T12:04:00.000Z',
       }),
@@ -241,7 +295,7 @@ describe('ciclo de vida da análise em memória', () => {
       repositorio.atualizarEtapa({
         idPublico: criado.idPublico,
         tentativa: 1,
-        leaseId: primeiro?.leaseId ?? '',
+        leaseId: primeiro.lease.id,
         etapa: 'indexacao',
         agora: '2026-09-12T12:02:01.000Z',
       }),
@@ -250,7 +304,7 @@ describe('ciclo de vida da análise em memória', () => {
       repositorio.registrarFalhaProcessamento({
         idPublico: criado.idPublico,
         tentativa: 1,
-        leaseId: primeiro?.leaseId ?? '',
+        leaseId: primeiro.lease.id,
         agora: '2026-09-12T12:02:01.000Z',
         falha: {
           codigo: 'ERRO_INTERNO',
@@ -267,39 +321,39 @@ describe('ciclo de vida da análise em memória', () => {
         agora: '2026-09-12T12:02:01.000Z',
         leaseExpiraEm: '2026-09-12T12:04:00.000Z',
       }),
-    ).resolves.toBeNull()
+    ).resolves.toMatchObject({ tipo: 'tentativa_desatualizada' })
     expect((await repositorio.buscarPorIdPublico(criado.idPublico))?.leaseId).toBe(
-      segundo?.leaseId,
+      segundo.lease.id,
     )
   })
 
   it('renova lease, atualiza etapa e registra somente falha estruturada segura', async () => {
     const repositorio = criarCicloVidaAnaliseEmMemoria()
     const criado = await repositorio.criarOuReutilizar(base)
-    const adquirido = await repositorio.adquirirProcessamento({
+    const adquirido = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T12:00:10.000Z',
       leaseExpiraEm: expiracaoInicial,
-    })
+    }))
     const renovado = await repositorio.renovarLease({
       idPublico: criado.idPublico,
       tentativa: 1,
-      leaseId: adquirido?.leaseId ?? '',
+      leaseId: adquirido.lease.id,
       agora: '2026-09-12T12:00:20.000Z',
       leaseExpiraEm: '2026-09-12T12:02:00.000Z',
     })
     const atualizado = await repositorio.atualizarEtapa({
       idPublico: criado.idPublico,
       tentativa: 1,
-      leaseId: adquirido?.leaseId ?? '',
+      leaseId: adquirido.lease.id,
       etapa: 'obtencao_arquivos',
       agora: '2026-09-12T12:00:30.000Z',
     })
     const falhou = await repositorio.registrarFalhaProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
-      leaseId: adquirido?.leaseId ?? '',
+      leaseId: adquirido.lease.id,
       agora: '2026-09-12T12:00:40.000Z',
       falha: {
         codigo: 'FONTE_INDISPONIVEL',
@@ -335,16 +389,16 @@ describe('ciclo de vida da análise em memória', () => {
   it('reinicia manualmente uma falha uma única vez e limpa a execução anterior', async () => {
     const repositorio = criarCicloVidaAnaliseEmMemoria()
     const criado = await repositorio.criarOuReutilizar(base)
-    const adquirido = await repositorio.adquirirProcessamento({
+    const adquirido = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T12:00:10.000Z',
       leaseExpiraEm: expiracaoInicial,
-    })
+    }))
     await repositorio.registrarFalhaProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
-      leaseId: adquirido?.leaseId ?? '',
+      leaseId: adquirido.lease.id,
       agora: '2026-09-12T12:00:20.000Z',
       falha: {
         codigo: 'CONFIGURACAO_INVALIDA',
@@ -357,6 +411,7 @@ describe('ciclo de vida da análise em memória', () => {
       Array.from({ length: 2 }, () =>
         repositorio.iniciarNovaTentativa({
           idPublico: criado.idPublico,
+          tentativaEsperada: 1,
           agora: '2026-09-12T12:01:00.000Z',
         }),
       ),
@@ -382,8 +437,75 @@ describe('ciclo de vida da análise em memória', () => {
         agora: '2026-09-12T12:01:01.000Z',
         leaseExpiraEm: '2026-09-12T12:02:00.000Z',
       }),
-    ).toBeNull()
+    ).toMatchObject({ tipo: 'tentativa_desatualizada' })
     expect(reiniciados[0]?.tentativa).toBe(2)
+  })
+
+  it('ignora retry atrasado da tentativa anterior após a tentativa seguinte falhar', async () => {
+    const repositorio = criarCicloVidaAnaliseEmMemoria()
+    const criado = await repositorio.criarOuReutilizar({
+      ...base,
+      commitSha: 'f'.repeat(40),
+    })
+    const primeiraAquisicao = exigirAquisicao(
+      await repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 1,
+        agora: '2026-09-12T12:10:00.000Z',
+        leaseExpiraEm: '2026-09-12T12:11:00.000Z',
+      }),
+    )
+    await repositorio.registrarFalhaProcessamento({
+      idPublico: criado.idPublico,
+      tentativa: 1,
+      leaseId: primeiraAquisicao.lease.id,
+      agora: '2026-09-12T12:10:10.000Z',
+      falha: {
+        codigo: 'ERRO_INTERNO',
+        categoria: 'transitoria',
+        mensagem: 'Falha da primeira tentativa.',
+      },
+    })
+
+    await expect(
+      repositorio.iniciarNovaTentativa({
+        idPublico: criado.idPublico,
+        tentativaEsperada: 1,
+        agora: '2026-09-12T12:10:20.000Z',
+      }),
+    ).resolves.toMatchObject({ tentativa: 2, estado: 'aguardando' })
+
+    const segundaAquisicao = exigirAquisicao(
+      await repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 2,
+        agora: '2026-09-12T12:10:30.000Z',
+        leaseExpiraEm: '2026-09-12T12:11:30.000Z',
+      }),
+    )
+    await repositorio.registrarFalhaProcessamento({
+      idPublico: criado.idPublico,
+      tentativa: 2,
+      leaseId: segundaAquisicao.lease.id,
+      agora: '2026-09-12T12:10:40.000Z',
+      falha: {
+        codigo: 'ERRO_INTERNO',
+        categoria: 'transitoria',
+        mensagem: 'Falha da segunda tentativa.',
+      },
+    })
+
+    await expect(
+      repositorio.iniciarNovaTentativa({
+        idPublico: criado.idPublico,
+        tentativaEsperada: 1,
+        agora: '2026-09-12T12:10:50.000Z',
+      }),
+    ).resolves.toBeNull()
+    expect(await repositorio.buscarPorIdPublico(criado.idPublico)).toMatchObject({
+      tentativa: 2,
+      estado: 'falha',
+    })
   })
 
   it('não expõe uma operação para concluir sem persistência integral do índice', () => {
@@ -392,3 +514,13 @@ describe('ciclo de vida da análise em memória', () => {
     expect(repositorio).not.toHaveProperty('concluir')
   })
 })
+
+function exigirAquisicao(
+  resultado: ResultadoAquisicaoProcessamento,
+): Extract<ResultadoAquisicaoProcessamento, { tipo: 'adquirido' }> {
+  if (resultado.tipo !== 'adquirido') {
+    throw new Error(`Aquisição não realizada: ${resultado.tipo}`)
+  }
+
+  return resultado
+}

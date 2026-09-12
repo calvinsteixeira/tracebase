@@ -63,6 +63,21 @@ export interface SnapshotAnalise {
   falha: FalhaAnalise | null
 }
 
+export type ResultadoAquisicaoProcessamento =
+  | {
+      tipo: 'adquirido'
+      snapshot: SnapshotAnalise
+      lease: {
+        id: string
+        expiraEm: string
+      }
+    }
+  | { tipo: 'inexistente' }
+  | { tipo: 'concluido' }
+  | { tipo: 'tentativa_desatualizada' }
+  | { tipo: 'ocupado' }
+  | { tipo: 'estado_incompativel' }
+
 export interface RepositorioCicloVidaAnalise {
   criarOuReutilizar(input: DadosSnapshotAnalise): Promise<SnapshotAnalise>
   buscarPorIdPublico(idPublico: string): Promise<SnapshotAnalise | null>
@@ -71,7 +86,7 @@ export interface RepositorioCicloVidaAnalise {
     tentativa: number
     agora: string
     leaseExpiraEm: string
-  }): Promise<SnapshotAnalise | null>
+  }): Promise<ResultadoAquisicaoProcessamento>
   renovarLease(input: {
     idPublico: string
     tentativa: number
@@ -101,6 +116,7 @@ export interface RepositorioCicloVidaAnalise {
   }): Promise<SnapshotAnalise | null>
   iniciarNovaTentativa(input: {
     idPublico: string
+    tentativaEsperada: number
     agora: string
   }): Promise<SnapshotAnalise | null>
 }

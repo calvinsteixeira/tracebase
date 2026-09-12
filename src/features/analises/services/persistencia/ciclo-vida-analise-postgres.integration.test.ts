@@ -1,6 +1,7 @@
 import { Pool } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import type { ResultadoAquisicaoProcessamento } from './ciclo-vida-analise'
 import { criarCicloVidaAnalisePostgres } from './ciclo-vida-analise-postgres'
 
 const databaseUrl =
@@ -107,7 +108,7 @@ describe('ciclo de vida da análise PostgreSQL', () => {
         agora: '2026-09-12T13:00:03.000Z',
         leaseExpiraEm: '2026-09-12T13:01:00.000Z',
       }),
-    ).toBeNull()
+    ).toMatchObject({ tipo: 'estado_incompativel' })
   })
 
   it('resolve a concorrência entre aquisição e falha de agendamento com um único vencedor', async () => {
@@ -134,16 +135,42 @@ describe('ciclo de vida da análise PostgreSQL', () => {
       }),
     ])
 
-    expect([adquirido, falhou].filter(Boolean)).toHaveLength(1)
+    expect(
+      Number(adquirido?.tipo === 'adquirido') + Number(Boolean(falhou)),
+    ).toBe(1)
     const estado = await repositorio.buscarPorIdPublico(criado.idPublico)
 
-    if (adquirido) {
+    if (adquirido?.tipo === 'adquirido') {
       expect(falhou).toBeNull()
-      expect(estado).toMatchObject({ estado: 'processando', leaseId: adquirido.leaseId })
+      expect(estado).toMatchObject({ estado: 'processando', leaseId: adquirido.lease.id })
     } else {
       expect(falhou).toMatchObject({ estado: 'falha', leaseId: null })
       expect(estado).toMatchObject({ estado: 'falha', falha: { codigo: 'FONTE_INDISPONIVEL' } })
     }
+  })
+
+  it('diferencia snapshot inexistente e tentativa antiga', async () => {
+    await expect(
+      repositorio.adquirirProcessamento({
+        idPublico: '00000000-0000-4000-8000-000000000000',
+        tentativa: 1,
+        agora: '2026-09-12T13:06:00.000Z',
+        leaseExpiraEm: '2026-09-12T13:07:00.000Z',
+      }),
+    ).resolves.toMatchObject({ tipo: 'inexistente' })
+
+    const criado = await repositorio.criarOuReutilizar({
+      ...base,
+      commitSha: 'c'.repeat(40),
+    })
+    await expect(
+      repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 0,
+        agora: '2026-09-12T13:06:00.000Z',
+        leaseExpiraEm: '2026-09-12T13:07:00.000Z',
+      }),
+    ).resolves.toMatchObject({ tipo: 'tentativa_desatualizada' })
   })
 
   it('permite uma única aquisição, bloqueia lease válido e assume lease expirado', async () => {
@@ -158,7 +185,7 @@ describe('ciclo de vida da análise PostgreSQL', () => {
         }),
       ),
     )
-    const adquiridos = resultados.filter((resultado) => resultado !== null)
+    const adquiridos = resultados.filter((resultado) => resultado.tipo === 'adquirido')
 
     expect(adquiridos).toHaveLength(1)
     expect(
@@ -168,17 +195,17 @@ describe('ciclo de vida da análise PostgreSQL', () => {
         agora: '2026-09-12T13:00:30.000Z',
         leaseExpiraEm: '2026-09-12T13:02:00.000Z',
       }),
-    ).toBeNull()
+    ).toMatchObject({ tipo: 'ocupado' })
 
-    const reassumido = await repositorio.adquirirProcessamento({
+    const reassumido = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T13:02:00.000Z',
       leaseExpiraEm: '2026-09-12T13:03:00.000Z',
-    })
+    }))
 
-    expect(reassumido?.leaseId).toBeTruthy()
-    expect(reassumido?.leaseId).not.toBe(adquiridos[0]?.leaseId)
+    expect(reassumido.lease.id).toBeTruthy()
+    expect(reassumido.lease.id).not.toBe(adquiridos[0]?.lease.id)
   })
 
   it('recusa tentativa anterior e lease antigo nas operações de atividade', async () => {
@@ -186,25 +213,25 @@ describe('ciclo de vida da análise PostgreSQL', () => {
       ...base,
       commitSha: 'e'.repeat(40),
     })
-    const antigo = await repositorio.adquirirProcessamento({
+    const antigo = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T13:10:00.000Z',
       leaseExpiraEm: '2026-09-12T13:11:00.000Z',
-    })
-    const atual = await repositorio.adquirirProcessamento({
+    }))
+    const atual = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T13:12:00.000Z',
       leaseExpiraEm: '2026-09-12T13:13:00.000Z',
-    })
+    }))
 
-    expect(antigo?.leaseId).not.toBe(atual?.leaseId)
+    expect(antigo.lease.id).not.toBe(atual.lease.id)
     await expect(
       repositorio.renovarLease({
         idPublico: criado.idPublico,
         tentativa: 1,
-        leaseId: antigo?.leaseId ?? '',
+        leaseId: antigo.lease.id,
         agora: '2026-09-12T13:12:10.000Z',
         leaseExpiraEm: '2026-09-12T13:14:00.000Z',
       }),
@@ -213,7 +240,7 @@ describe('ciclo de vida da análise PostgreSQL', () => {
       repositorio.atualizarEtapa({
         idPublico: criado.idPublico,
         tentativa: 1,
-        leaseId: antigo?.leaseId ?? '',
+        leaseId: antigo.lease.id,
         etapa: 'indexacao',
         agora: '2026-09-12T13:12:10.000Z',
       }),
@@ -222,7 +249,7 @@ describe('ciclo de vida da análise PostgreSQL', () => {
       repositorio.registrarFalhaProcessamento({
         idPublico: criado.idPublico,
         tentativa: 1,
-        leaseId: antigo?.leaseId ?? '',
+        leaseId: antigo.lease.id,
         agora: '2026-09-12T13:12:10.000Z',
         falha: {
           codigo: 'ERRO_INTERNO',
@@ -239,7 +266,7 @@ describe('ciclo de vida da análise PostgreSQL', () => {
         agora: '2026-09-12T13:12:10.000Z',
         leaseExpiraEm: '2026-09-12T13:14:00.000Z',
       }),
-    ).toBeNull()
+    ).toMatchObject({ tipo: 'tentativa_desatualizada' })
   })
 
   it('persiste falha segura, permite uma retomada manual e não readquire concluído', async () => {
@@ -247,16 +274,16 @@ describe('ciclo de vida da análise PostgreSQL', () => {
       ...base,
       commitSha: 'f'.repeat(40),
     })
-    const adquirido = await repositorio.adquirirProcessamento({
+    const adquirido = exigirAquisicao(await repositorio.adquirirProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
       agora: '2026-09-12T13:20:00.000Z',
       leaseExpiraEm: '2026-09-12T13:21:00.000Z',
-    })
+    }))
     const falhou = await repositorio.registrarFalhaProcessamento({
       idPublico: criado.idPublico,
       tentativa: 1,
-      leaseId: adquirido?.leaseId ?? '',
+      leaseId: adquirido.lease.id,
       agora: '2026-09-12T13:20:30.000Z',
       falha: {
         codigo: 'FONTE_INDISPONIVEL',
@@ -283,6 +310,7 @@ describe('ciclo de vida da análise PostgreSQL', () => {
       Array.from({ length: 2 }, () =>
         repositorio.iniciarNovaTentativa({
           idPublico: criado.idPublico,
+          tentativaEsperada: 1,
           agora: '2026-09-12T13:21:00.000Z',
         }),
       ),
@@ -315,6 +343,107 @@ describe('ciclo de vida da análise PostgreSQL', () => {
         agora: '2026-09-12T13:22:01.000Z',
         leaseExpiraEm: '2026-09-12T13:23:00.000Z',
       }),
-    ).toBeNull()
+    ).toMatchObject({ tipo: 'concluido' })
+  })
+
+  it('ignora retry atrasado quando a tentativa seguinte já falhou', async () => {
+    const criado = await repositorio.criarOuReutilizar({
+      ...base,
+      commitSha: '1'.repeat(40),
+    })
+    const primeiraAquisicao = exigirAquisicao(
+      await repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 1,
+        agora: '2026-09-12T13:30:00.000Z',
+        leaseExpiraEm: '2026-09-12T13:31:00.000Z',
+      }),
+    )
+    await repositorio.registrarFalhaProcessamento({
+      idPublico: criado.idPublico,
+      tentativa: 1,
+      leaseId: primeiraAquisicao.lease.id,
+      agora: '2026-09-12T13:30:10.000Z',
+      falha: {
+        codigo: 'ERRO_INTERNO',
+        categoria: 'transitoria',
+        mensagem: 'Falha da primeira tentativa.',
+      },
+    })
+    await expect(
+      repositorio.iniciarNovaTentativa({
+        idPublico: criado.idPublico,
+        tentativaEsperada: 1,
+        agora: '2026-09-12T13:30:20.000Z',
+      }),
+    ).resolves.toMatchObject({ tentativa: 2, estado: 'aguardando' })
+
+    const segundaAquisicao = exigirAquisicao(
+      await repositorio.adquirirProcessamento({
+        idPublico: criado.idPublico,
+        tentativa: 2,
+        agora: '2026-09-12T13:30:30.000Z',
+        leaseExpiraEm: '2026-09-12T13:31:30.000Z',
+      }),
+    )
+    await repositorio.registrarFalhaProcessamento({
+      idPublico: criado.idPublico,
+      tentativa: 2,
+      leaseId: segundaAquisicao.lease.id,
+      agora: '2026-09-12T13:30:40.000Z',
+      falha: {
+        codigo: 'ERRO_INTERNO',
+        categoria: 'transitoria',
+        mensagem: 'Falha da segunda tentativa.',
+      },
+    })
+
+    await expect(
+      repositorio.iniciarNovaTentativa({
+        idPublico: criado.idPublico,
+        tentativaEsperada: 1,
+        agora: '2026-09-12T13:30:50.000Z',
+      }),
+    ).resolves.toBeNull()
+    expect(await repositorio.buscarPorIdPublico(criado.idPublico)).toMatchObject({
+      tentativa: 2,
+      estado: 'falha',
+    })
+  })
+
+  it('rejeita estados de erro que violam as constraints do snapshot', async () => {
+    const criado = await repositorio.criarOuReutilizar({
+      ...base,
+      commitSha: '2'.repeat(40),
+    })
+
+    await expect(
+      pool.query(
+        `UPDATE snapshots SET estado = 'falha', erro_codigo = 'ERRO_INTERNO', erro_categoria = 'inexistente', erro_mensagem = 'falha', erro_em = NOW() WHERE id_publico = $1::uuid`,
+        [criado.idPublico],
+      ),
+    ).rejects.toThrow()
+    await expect(
+      pool.query(
+        `UPDATE snapshots SET erro_codigo = 'ERRO_INTERNO', erro_categoria = 'transitoria', erro_mensagem = 'erro', erro_em = NOW() WHERE id_publico = $1::uuid`,
+        [criado.idPublico],
+      ),
+    ).rejects.toThrow()
+    await expect(
+      pool.query(
+        `UPDATE snapshots SET estado = 'falha' WHERE id_publico = $1::uuid`,
+        [criado.idPublico],
+      ),
+    ).rejects.toThrow()
   })
 })
+
+function exigirAquisicao(
+  resultado: ResultadoAquisicaoProcessamento,
+): Extract<ResultadoAquisicaoProcessamento, { tipo: 'adquirido' }> {
+  if (resultado.tipo !== 'adquirido') {
+    throw new Error(`Aquisição não realizada: ${resultado.tipo}`)
+  }
+
+  return resultado
+}

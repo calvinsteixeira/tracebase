@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 ALTER TABLE snapshots
   ADD COLUMN id_publico UUID NOT NULL DEFAULT gen_random_uuid(),
   ADD COLUMN estado TEXT NOT NULL DEFAULT 'aguardando',
@@ -36,6 +34,22 @@ ALTER TABLE snapshots
     OR (estado <> 'processando' AND lease_id IS NULL AND lease_expira_em IS NULL)
   ),
   ADD CONSTRAINT snapshots_erro_coerente CHECK (
-    (erro_codigo IS NULL AND erro_categoria IS NULL AND erro_mensagem IS NULL AND erro_detalhes IS NULL AND erro_em IS NULL)
-    OR (erro_codigo IS NOT NULL AND erro_categoria IS NOT NULL AND erro_mensagem IS NOT NULL AND erro_em IS NOT NULL)
+    (
+      estado = 'falha'
+      AND erro_codigo IS NOT NULL
+      AND erro_categoria IS NOT NULL
+      AND erro_mensagem IS NOT NULL
+      AND erro_em IS NOT NULL
+    )
+    OR (
+      estado <> 'falha'
+      AND erro_codigo IS NULL
+      AND erro_categoria IS NULL
+      AND erro_mensagem IS NULL
+      AND erro_detalhes IS NULL
+      AND erro_em IS NULL
+    )
+  ),
+  ADD CONSTRAINT snapshots_erro_categoria_valida CHECK (
+    erro_categoria IS NULL OR erro_categoria IN ('transitoria', 'deterministica')
   );

@@ -5,6 +5,7 @@ import type {
   DetalhesFalhaAnalise,
   FalhaAnalise,
   RepositorioCicloVidaAnalise,
+  ResultadoAquisicaoProcessamento,
   SnapshotAnalise,
 } from './ciclo-vida-analise'
 
@@ -29,6 +30,10 @@ interface LinhaSnapshotCiclo {
   erro_mensagem: string | null
   erro_detalhes: DetalhesFalhaAnalise | null
   erro_em: string | null
+}
+
+interface LinhaResultadoAquisicao extends LinhaSnapshotCiclo {
+  resultado: ResultadoAquisicaoProcessamento['tipo']
 }
 
 const selecaoSnapshot = `
@@ -133,38 +138,56 @@ export function criarCicloVidaAnalisePostgres(pool: Pool): RepositorioCicloVidaA
     },
 
     async adquirirProcessamento(input) {
-      if (!eUuid(input.idPublico)) return null
+      if (!eUuid(input.idPublico)) return { tipo: 'inexistente' }
 
       const leaseId = randomUUID()
-      const resultado = await pool.query<LinhaSnapshotCiclo>(
+      const resultado = await pool.query<LinhaResultadoAquisicao>(
         `
-          WITH adquirido AS (
-            UPDATE snapshots
+          WITH alvo AS (
+            SELECT s.*
+            FROM snapshots s
+            WHERE s.id_publico = $1::uuid
+            FOR UPDATE
+          ), adquirido AS (
+            UPDATE snapshots s
             SET estado = 'processando',
-                etapa = COALESCE(etapa, 'preparacao'),
-                tentativa_iniciada_em = COALESCE(tentativa_iniciada_em, $3::timestamptz),
+                etapa = COALESCE(s.etapa, 'preparacao'),
+                tentativa_iniciada_em = COALESCE(s.tentativa_iniciada_em, $3::timestamptz),
                 ultima_atividade_em = $3::timestamptz,
                 atualizado_em = $3::timestamptz,
                 finalizado_em = NULL,
                 lease_id = $5::uuid,
                 lease_expira_em = $4::timestamptz
-            WHERE id_publico = $1::uuid
-              AND tentativa = $2
+            FROM alvo
+            WHERE s.id = alvo.id
+              AND s.tentativa = $2
               AND $4::timestamptz > $3::timestamptz
               AND (
-                estado = 'aguardando'
-                OR (estado = 'processando' AND lease_expira_em <= $3::timestamptz)
+                s.estado = 'aguardando'
+                OR (s.estado = 'processando' AND s.lease_expira_em <= $3::timestamptz)
               )
-            RETURNING *
+            RETURNING s.*
+          ), classificado AS (
+            SELECT 'adquirido'::text AS resultado, a.*
+            FROM adquirido a
+            UNION ALL
+            SELECT CASE
+              WHEN a.estado = 'concluido' THEN 'concluido'
+              WHEN a.tentativa <> $2 THEN 'tentativa_desatualizada'
+              WHEN a.estado = 'processando' AND a.lease_expira_em > $3::timestamptz THEN 'ocupado'
+              ELSE 'estado_incompativel'
+            END AS resultado, a.*
+            FROM alvo a
+            WHERE NOT EXISTS (SELECT 1 FROM adquirido)
           )
-          SELECT ${selecaoSnapshot}
-          FROM adquirido s
+          SELECT s.resultado, ${selecaoSnapshot}
+          FROM classificado s
           INNER JOIN repositorios r ON r.id = s.repositorio_id
         `,
         [input.idPublico, input.tentativa, input.agora, input.leaseExpiraEm, leaseId],
       )
 
-      return resultado.rows[0] ? mapearSnapshot(resultado.rows[0]) : null
+      return mapearResultadoAquisicao(resultado.rows[0], leaseId)
     },
 
     async renovarLease(input) {
@@ -330,16 +353,39 @@ export function criarCicloVidaAnalisePostgres(pool: Pool): RepositorioCicloVidaA
                 erro_em = NULL
             WHERE id_publico = $1::uuid
               AND estado = 'falha'
+              AND tentativa = $3
             RETURNING *
           )
           SELECT ${selecaoSnapshot}
           FROM reiniciado s
           INNER JOIN repositorios r ON r.id = s.repositorio_id
         `,
-        [input.idPublico, input.agora],
+        [input.idPublico, input.agora, input.tentativaEsperada],
       )
 
       return resultado.rows[0] ? mapearSnapshot(resultado.rows[0]) : null
+    },
+  }
+}
+
+function mapearResultadoAquisicao(
+  linha: LinhaResultadoAquisicao | undefined,
+  leaseId: string,
+): ResultadoAquisicaoProcessamento {
+  if (!linha) return { tipo: 'inexistente' }
+  if (linha.resultado !== 'adquirido') return { tipo: linha.resultado }
+
+  const snapshot = mapearSnapshot(linha)
+  if (!snapshot.leaseExpiraEm) {
+    throw new Error('Aquisição retornou um snapshot sem expiração de lease.')
+  }
+
+  return {
+    tipo: 'adquirido',
+    snapshot,
+    lease: {
+      id: leaseId,
+      expiraEm: snapshot.leaseExpiraEm,
     },
   }
 }
