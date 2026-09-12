@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type {
-  DadosSnapshotAnalise,
+  DadosCriacaoSnapshotAnalise,
   ResultadoAquisicaoProcessamento,
 } from './ciclo-vida-analise'
 import { criarCicloVidaAnaliseEmMemoria } from './ciclo-vida-analise-memoria'
 
-const base: DadosSnapshotAnalise = {
+const base: DadosCriacaoSnapshotAnalise = {
   repositorio: {
     url: 'https://github.com/tracebase/exemplo',
     proprietario: 'Tracebase',

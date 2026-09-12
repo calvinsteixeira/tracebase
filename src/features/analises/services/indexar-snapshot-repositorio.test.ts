@@ -24,8 +24,12 @@ const entrada = {
     nome: 'repositorio',
   },
   snapshot: {
-    id: 'snapshot:teste',
-    repositorioId: 'repositorio:teste',
+    idPublico: 'snapshot:teste',
+    repositorio: {
+      url: 'https://github.com/dono/repositorio',
+      proprietario: 'dono',
+      nome: 'repositorio',
+    },
     commitSha: 'c'.repeat(40),
     referencia: 'main',
   },

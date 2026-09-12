@@ -35,7 +35,7 @@ export interface FalhaAnaliseParaRegistro {
   detalhes?: DetalhesFalhaAnalise
 }
 
-export interface DadosSnapshotAnalise {
+export interface DadosCriacaoSnapshotAnalise {
   repositorio: {
     url: string
     proprietario: string
@@ -46,9 +46,9 @@ export interface DadosSnapshotAnalise {
   agora: string
 }
 
-export interface SnapshotAnalise {
+export interface SnapshotCicloVidaAnalise {
   idPublico: string
-  repositorio: DadosSnapshotAnalise['repositorio']
+  repositorio: DadosCriacaoSnapshotAnalise['repositorio']
   commitSha: string
   referencia: string
   estado: EstadoAnalise
@@ -66,7 +66,7 @@ export interface SnapshotAnalise {
 export type ResultadoAquisicaoProcessamento =
   | {
       tipo: 'adquirido'
-      snapshot: SnapshotAnalise
+      snapshot: SnapshotCicloVidaAnalise
       lease: {
         id: string
         expiraEm: string
@@ -79,8 +79,8 @@ export type ResultadoAquisicaoProcessamento =
   | { tipo: 'estado_incompativel' }
 
 export interface RepositorioCicloVidaAnalise {
-  criarOuReutilizar(input: DadosSnapshotAnalise): Promise<SnapshotAnalise>
-  buscarPorIdPublico(idPublico: string): Promise<SnapshotAnalise | null>
+  criarOuReutilizar(input: DadosCriacaoSnapshotAnalise): Promise<SnapshotCicloVidaAnalise>
+  buscarPorIdPublico(idPublico: string): Promise<SnapshotCicloVidaAnalise | null>
   adquirirProcessamento(input: {
     idPublico: string
     tentativa: number
@@ -93,30 +93,30 @@ export interface RepositorioCicloVidaAnalise {
     leaseId: string
     agora: string
     leaseExpiraEm: string
-  }): Promise<SnapshotAnalise | null>
+  }): Promise<SnapshotCicloVidaAnalise | null>
   atualizarEtapa(input: {
     idPublico: string
     tentativa: number
     leaseId: string
     etapa: EtapaAnalise
     agora: string
-  }): Promise<SnapshotAnalise | null>
+  }): Promise<SnapshotCicloVidaAnalise | null>
   registrarFalhaAgendamento(input: {
     idPublico: string
     tentativa: number
     agora: string
     falha: FalhaAnaliseParaRegistro
-  }): Promise<SnapshotAnalise | null>
+  }): Promise<SnapshotCicloVidaAnalise | null>
   registrarFalhaProcessamento(input: {
     idPublico: string
     tentativa: number
     leaseId: string
     agora: string
     falha: FalhaAnaliseParaRegistro
-  }): Promise<SnapshotAnalise | null>
+  }): Promise<SnapshotCicloVidaAnalise | null>
   iniciarNovaTentativa(input: {
     idPublico: string
     tentativaEsperada: number
     agora: string
-  }): Promise<SnapshotAnalise | null>
+  }): Promise<SnapshotCicloVidaAnalise | null>
 }

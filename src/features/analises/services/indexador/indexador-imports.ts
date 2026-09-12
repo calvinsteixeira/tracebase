@@ -11,7 +11,7 @@ import type {
   Evidencia,
   IndiceAnalise,
   RelacaoImportacao,
-  SnapshotAnalise,
+  IdentidadeSnapshotIndice,
   TipoArquivoFonte,
   TipoExportacao,
 } from '@/features/analises/analises.types'
@@ -19,7 +19,7 @@ import type {
 const extensoesSuportadas = ['.ts', '.tsx', '.js', '.jsx'] as const
 
 export interface SolicitarIndexacaoImports {
-  snapshot: SnapshotAnalise
+  snapshot: IdentidadeSnapshotIndice
   arquivosFonte: ArquivoFonte[]
   configuracao?: ConfiguracaoProjeto
 }
