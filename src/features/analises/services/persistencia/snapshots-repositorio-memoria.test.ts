@@ -38,7 +38,7 @@ describe('repositório de snapshots em memória', () => {
       snapshot: { commitSha: 'b'.repeat(40), referencia: 'main' },
     })
 
-    expect(atualizado.id).not.toBe(outroCommit.id)
+    expect(atualizado.idPublico).not.toBe(outroCommit.idPublico)
     expect(
       await repositorio.buscarPorRepositorioECommit(
         snapshot.repositorio,

@@ -26,14 +26,21 @@ beforeAll(async () => {
     snapshots: 'snapshots',
   })
 
-  const historico = await pool.query<{ total: string; versao: string }>(
+  const historico = await pool.query<{ total: string; primeira_versao: string; ultima_versao: string }>(
     `
-      SELECT COUNT(*)::text AS total, MIN(version) AS versao
+      SELECT
+        COUNT(*)::text AS total,
+        MIN(version) AS primeira_versao,
+        MAX(version) AS ultima_versao
       FROM supabase_migrations.schema_migrations
     `,
   )
 
-  expect(historico.rows[0]).toEqual({ total: '1', versao: '20260905000000' })
+  expect(historico.rows[0]).toEqual({
+    total: '2',
+    primeira_versao: '20260905000000',
+    ultima_versao: '20260912000000',
+  })
 
   const historicoParalelo = await pool.query<{ existe: string | null }>(
     `SELECT to_regclass('public.schema_migrations') AS existe`,

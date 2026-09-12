@@ -11,7 +11,7 @@ interface LinhaRepositorio {
 }
 
 interface LinhaSnapshot {
-  id: string
+  id_publico: string
   criado_em: Date
 }
 
@@ -45,7 +45,7 @@ export function criarRepositorioSnapshotsPostgres(pool: Pool): RepositorioSnapsh
             VALUES ($1, $2, $3)
             ON CONFLICT (repositorio_id, commit_sha) DO UPDATE
               SET referencia = EXCLUDED.referencia
-            RETURNING id::text AS id, criado_em
+            RETURNING id_publico::text AS id_publico, criado_em
           `,
           [repositorio.rows[0].id, snapshot.snapshot.commitSha, snapshot.snapshot.referencia],
         )
@@ -71,7 +71,7 @@ export function criarRepositorioSnapshotsPostgres(pool: Pool): RepositorioSnapsh
       >(
         `
           SELECT
-            s.id::text AS id,
+            s.id_publico::text AS id_publico,
             s.criado_em,
             s.referencia,
             r.url AS repositorio_url,
@@ -99,7 +99,7 @@ export function criarRepositorioSnapshotsPostgres(pool: Pool): RepositorioSnapsh
           commitSha,
           referencia: linha.referencia,
         },
-        id: linha.id,
+        idPublico: linha.id_publico,
         criadoEm: linha.criado_em.toISOString(),
       }
     },
@@ -112,7 +112,7 @@ function mapearSnapshotPersistido(
 ): SnapshotPersistido {
   return {
     ...snapshot,
-    id: linha.id,
+    idPublico: linha.id_publico,
     criadoEm: linha.criado_em.toISOString(),
     repositorio: {
       ...snapshot.repositorio,

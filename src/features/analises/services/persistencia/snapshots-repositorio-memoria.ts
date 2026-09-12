@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import type {
   RepositorioSnapshots,
   SnapshotParaPersistir,
@@ -6,8 +8,6 @@ import type {
 
 export function criarRepositorioSnapshotsEmMemoria(): RepositorioSnapshots {
   const snapshots = new Map<string, SnapshotPersistido>()
-  let proximoId = 1
-
   return {
     async salvar(snapshot) {
       const chave = criarChave(snapshot.repositorio, snapshot.snapshot.commitSha)
@@ -21,7 +21,7 @@ export function criarRepositorioSnapshotsEmMemoria(): RepositorioSnapshots {
 
       const persistido: SnapshotPersistido = {
         ...snapshot,
-        id: String(proximoId++),
+        idPublico: randomUUID(),
         criadoEm: new Date().toISOString(),
       }
       snapshots.set(chave, persistido)

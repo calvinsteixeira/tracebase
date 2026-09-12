@@ -11,7 +11,7 @@ export interface SnapshotParaPersistir {
 }
 
 export interface SnapshotPersistido extends SnapshotParaPersistir {
-  id: string
+  idPublico: string
   criadoEm: string
 }
 
