@@ -350,6 +350,14 @@ O PostgreSQL é o único banco de dados oficial do Tracebase. Durante o desenvol
 - Não execute migrations de produção durante builds, previews da Vercel ou qualquer job de CI nesta fase. A pipeline não deve apontar para Supabase nem para outro banco persistente. A aplicação de migrations em produção será uma etapa controlada quando o ambiente hospedado for configurado. Bytebase não deve ser adicionado sem uma necessidade explícita de governança de mudanças de banco.
 - Migrations são obrigatórias nos testes de integração contra um PostgreSQL temporário e descartável. O job independente que executa esse fluxo deve se chamar exatamente `Integração PostgreSQL`; ele pode reutilizar `pnpm test:integration`, que sobe o Compose local do runner, recria a base, aplica as migrations e executa os testes.
 
+### Deploy contínuo
+
+- O deploy de produção é responsabilidade do GitHub Actions e ocorre somente em `push` da `main`.
+- O job `Deploy de produção` depende de `Qualidade e build` e `Integração PostgreSQL`; não pode executar em Pull Requests.
+- O workflow deve consumir os Secrets da Vercel sem escrever valores, IDs ou tokens no YAML, no repositório ou nos logs.
+- Migrations de produção continuam proibidas no CD, nos builds e nos previews; o job de deploy apenas prepara, compila e publica o artefato da aplicação.
+- Os previews continuam sob responsabilidade da integração Git da Vercel enquanto essa integração não for desativada em uma mudança posterior.
+
 ## API assíncrona e idempotência HTTP
 
 As rotas públicas devem separar verificação, solicitação e consulta de estado:

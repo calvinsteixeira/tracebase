@@ -50,3 +50,42 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Iniciar PostgreSQL temporário, aplicar migrations e testar
         run: pnpm test:integration
+
+  deploy:
+    name: Deploy de produção
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [quality, integration]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Baixar código do commit disparador
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Preparar pnpm
+        uses: pnpm/action-setup@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+      - name: Obter configuração de produção da Vercel
+        run: pnpm exec vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Gerar build de produção da Vercel
+        run: pnpm exec vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Publicar build prebuilt em produção
+        run: pnpm exec vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
