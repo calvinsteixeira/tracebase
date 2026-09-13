@@ -1,4 +1,7 @@
-import type { FonteDeRepositorio } from '../fonte-repositorio'
+import type {
+  ArquivoArvoreRepositorio,
+  FonteDeRepositorioComArvore,
+} from '../fonte-repositorio'
 
 export interface ResumoFonteRepositorioGitHub {
   proprietario: string
@@ -6,13 +9,7 @@ export interface ResumoFonteRepositorioGitHub {
   url: string
   referencia: string
   commitSha: string
-  arquivos: ArquivoArvoreGitHub[]
-}
-
-export interface ArquivoArvoreGitHub {
-  caminho: string
-  sha: string
-  tamanhoBytes?: number
+  arquivos: ArquivoArvoreRepositorio[]
 }
 
 export interface FonteRepositorioGitHub {
@@ -22,4 +19,4 @@ export interface FonteRepositorioGitHub {
   ): Promise<ResumoFonteRepositorioGitHub>
 }
 
-export type FonteRepositorioGitHubCompleta = FonteRepositorioGitHub & FonteDeRepositorio
+export type FonteRepositorioGitHubCompleta = FonteRepositorioGitHub & FonteDeRepositorioComArvore

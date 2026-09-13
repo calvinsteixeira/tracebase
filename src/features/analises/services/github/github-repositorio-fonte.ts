@@ -4,9 +4,9 @@ import {
   TAMANHO_MAXIMO_CONFIGURACAO_BYTES,
 } from '../fonte-repositorio'
 import type {
-  ArquivoArvoreGitHub,
   FonteRepositorioGitHubCompleta,
 } from './github-repositorio.types'
+import type { ArquivoArvoreRepositorio } from '../fonte-repositorio'
 
 const apiGitHub = 'https://api.github.com'
 
@@ -71,24 +71,13 @@ export function criarFonteRepositorioGitHub(
         token,
         timeoutMs,
       )
-      const arvore = await requisitar<RespostaArvoreGitHub>(
+      const arquivos = await obterArvoreGitHub({
         buscar,
-        `/repos/${encodeURIComponent(proprietario)}/${encodeURIComponent(nome)}/git/trees/${commit.sha}?recursive=1`,
         token,
         timeoutMs,
-      )
-
-      if (arvore.truncated) {
-        throw new ErroFonteGitHub('VERIFICACAO_INCONCLUSIVA')
-      }
-
-      const arquivos = arvore.tree
-        .filter((item) => item.type === 'blob')
-        .map<ArquivoArvoreGitHub>((item) => ({
-          caminho: item.path,
-          sha: item.sha,
-          ...(item.size === undefined ? {} : { tamanhoBytes: item.size }),
-        }))
+        repositorio: { proprietario, nome },
+        commitSha: commit.sha,
+      })
 
       return {
         proprietario,
@@ -97,6 +86,23 @@ export function criarFonteRepositorioGitHub(
         referencia: repositorio.default_branch,
         commitSha: commit.sha,
         arquivos,
+      }
+    },
+
+    async obterArvore({ repositorio, commitSha }) {
+      try {
+        return await obterArvoreGitHub({
+          buscar,
+          token,
+          timeoutMs,
+          repositorio,
+          commitSha,
+        })
+      } catch (erro) {
+        if (erro instanceof ErroFonteGitHub) {
+          throw new ErroFonteRepositorio('FONTE_INDISPONIVEL')
+        }
+        throw erro
       }
     },
 
@@ -154,6 +160,39 @@ export function criarFonteRepositorioGitHub(
       }
     },
   }
+}
+
+async function obterArvoreGitHub({
+  buscar,
+  token,
+  timeoutMs,
+  repositorio,
+  commitSha,
+}: {
+  buscar: typeof fetch
+  token?: string
+  timeoutMs: number
+  repositorio: { proprietario: string; nome: string }
+  commitSha: string
+}): Promise<ArquivoArvoreRepositorio[]> {
+  const arvore = await requisitar<RespostaArvoreGitHub>(
+    buscar,
+    `/repos/${encodeURIComponent(repositorio.proprietario)}/${encodeURIComponent(repositorio.nome)}/git/trees/${encodeURIComponent(commitSha)}?recursive=1`,
+    token,
+    timeoutMs,
+  )
+
+  if (arvore.truncated) {
+    throw new ErroFonteGitHub('VERIFICACAO_INCONCLUSIVA')
+  }
+
+  return arvore.tree
+    .filter((item) => item.type === 'blob')
+    .map((item) => ({
+      caminho: item.path,
+      sha: item.sha,
+      ...(item.size === undefined ? {} : { tamanhoBytes: item.size }),
+    }))
 }
 
 type CodigoErroFonte =
