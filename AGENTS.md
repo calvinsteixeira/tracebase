@@ -489,6 +489,7 @@ Regras de teste:
 - Para Zustand, limpe ou recrie a store entre testes; um teste não pode depender do estado deixado por outro.
 - Não valide somente que uma string fixa existe; valide que a pessoa consegue realizar a ação e observar o resultado.
 - Para fatos estruturais, valide a evidência completa — arquivo, linha inicial, coluna inicial, linha final e coluna final — em vez de apenas verificar que a linha é maior que zero.
+- Testes relacionados a lease, timeout ou validade temporal devem usar relógio controlado ou uma referência dinâmica compatível com o relógio da dependência real; datas absolutas que inevitavelmente vencem não podem determinar o sucesso da suíte. Não resolva instabilidade aumentando timeouts ou adicionando esperas reais sem necessidade.
 - Um conjunto verde de lint, typecheck, testes e build comprova somente os cenários cobertos. Critérios de aceite exigem testes representativos para cada comportamento e limite relevante; não trate a passagem dos comandos como prova de requisitos que não foram exercitados.
 
 ## Checklist antes de concluir

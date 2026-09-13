@@ -230,10 +230,15 @@ describe('consumidor de processamento de análise', () => {
     const ambiente = await criarAmbiente()
     const timers = criarTimers()
     let liberar!: () => void
+    let sinalizarObterArvore!: () => void
     const bloqueio = new Promise<void>((resolve) => {
       liberar = resolve
     })
+    const obterArvoreIniciada = new Promise<void>((resolve) => {
+      sinalizarObterArvore = resolve
+    })
     ambiente.fonte.obterArvore = vi.fn(async () => {
+      sinalizarObterArvore()
       await bloqueio
       return ambiente.arvore
     })
@@ -245,7 +250,7 @@ describe('consumidor de processamento de análise', () => {
       duracaoMaximaMs: 100,
     }).processar(ambiente.mensagem)
 
-    await Promise.resolve()
+    await obterArvoreIniciada
     await timers.dispararTimeouts(100)
     await expect(processamento).resolves.toMatchObject({
       tipo: 'falha_registrada',

@@ -13,10 +13,16 @@ const pool = new Pool({ connectionString: databaseUrl })
 const ciclo = criarCicloVidaAnalisePostgres(pool)
 const persistencia = criarRepositorioPersistenciaIndicePostgres(pool)
 const url = 'https://github.com/tracebase/persistencia-indice-integracao'
-const agora = '2026-09-13T13:00:00.000Z'
-const expiraEm = '2026-09-13T13:10:00.000Z'
+let agora = ''
+let expiraEm = ''
 
 beforeAll(async () => {
+  const relogioBanco = await pool.query<{ agora: string }>(
+    'SELECT clock_timestamp()::text AS agora',
+  )
+  agora = new Date(Date.parse(relogioBanco.rows[0].agora)).toISOString()
+  expiraEm = new Date(Date.parse(agora) + 10 * 60_000).toISOString()
+
   const tabelas = await pool.query<{ historico: string | null; legado: string | null }>(
     `
       SELECT
@@ -166,21 +172,21 @@ describe('persistência transacional do índice PostgreSQL', () => {
     await expect(
       persistencia.salvarEConcluir({
         ...entrada,
-        agora: '2026-09-13T13:11:00.000Z',
+        agora: adicionarMs(agora, 11 * 60_000),
       }),
     ).resolves.toEqual({ tipo: 'lease_invalido' })
 
     const reassumido = await ciclo.adquirirProcessamento({
       idPublico: preparado.snapshot.idPublico,
       tentativa: 1,
-      agora: '2026-09-13T13:12:00.000Z',
-      leaseExpiraEm: '2026-09-13T13:20:00.000Z',
+      agora: adicionarMs(agora, 12 * 60_000),
+      leaseExpiraEm: adicionarMs(agora, 20 * 60_000),
     })
     if (reassumido.tipo !== 'adquirido') throw new Error('O lease deveria ter sido reassumido.')
     await expect(
       persistencia.salvarEConcluir({
         ...entrada,
-        agora: '2026-09-13T13:12:00.000Z',
+        agora: adicionarMs(agora, 12 * 60_000),
       }),
     ).resolves.toEqual({ tipo: 'lease_invalido' })
 
@@ -373,10 +379,14 @@ function criarEntrada(
     tentativa: snapshot.tentativa,
     leaseId,
     agora,
-    prazoExpiraEm: '2026-09-13T13:30:00.000Z',
+    prazoExpiraEm: adicionarMs(agora, 30 * 60_000),
     arquivos,
     indice: criarIndice(snapshot, incluirArquivoExtra, quantidadeSimbolos),
   }
+}
+
+function adicionarMs(data: string, milissegundos: number) {
+  return new Date(Date.parse(data) + milissegundos).toISOString()
 }
 
 function criarArquivosDoSnapshot(incluirArquivoExtra: boolean): ArquivoDoSnapshot[] {
