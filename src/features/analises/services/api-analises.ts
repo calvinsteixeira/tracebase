@@ -8,6 +8,7 @@ import type { FonteRepositorioGitHub } from './github/github-repositorio.types'
 import type { ResumoStatusAnalise, SolicitacaoAnalise } from './persistencia/ciclo-vida-analise'
 import type { RepositorioApiAnalises } from './persistencia/repositorio-api-analises'
 import type { FilaDeAnalises } from './fila-analises'
+import { exigirUrlDoCorpo, lerCorpoObjeto } from './validar-corpo-http'
 import {
   ErroApiAnalises,
   mapearErroApiAnalises,
@@ -52,9 +53,8 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
   return {
     async elegibilidade(request: Request) {
       try {
-        const corpo = await lerObjeto(request)
-        if (typeof corpo.url !== 'string') throw new ErroApiAnalises('REQUISICAO_INVALIDA')
-        return Response.json(await verificarElegibilidadeRepositorio(corpo.url, fonte, obterLimitesElegibilidadeRepositorio()))
+        const url = exigirUrlDoCorpo(await lerCorpoObjeto(request))
+        return Response.json(await verificarElegibilidadeRepositorio(url, fonte, obterLimitesElegibilidadeRepositorio()))
       } catch (erro) {
         return respostaErro(erro)
       }
@@ -62,10 +62,9 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
 
     async criar(request: Request) {
       try {
-        const corpo = await lerObjeto(request)
+        const corpo = await lerCorpoObjeto(request)
         const requestId = exigirUuid(corpo.requestId)
-        const url = corpo.url
-        if (typeof url !== 'string') throw new ErroApiAnalises('REQUISICAO_INVALIDA')
+        const url = exigirUrlDoCorpo(corpo)
         const referencia = analisarUrlRepositorio(url)
         const urlNormalizada = `https://github.com/${referencia.proprietario}/${referencia.nome}`
         const solicitacaoExistente = await dependencias.repositorio.buscarSolicitacao(requestId)
@@ -108,7 +107,7 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
     async retry(snapshotId: string, request: Request) {
       try {
         exigirUuid(snapshotId)
-        const corpo = await lerObjeto(request)
+        const corpo = await lerCorpoObjeto(request)
         const requestId = exigirUuid(corpo.requestId)
         const tentativaEsperada = corpo.tentativaEsperada
         if (typeof tentativaEsperada !== 'number' || !Number.isInteger(tentativaEsperada) || tentativaEsperada < 1) return respostaErroCodigo('REQUISICAO_INVALIDA', 400)
@@ -166,16 +165,6 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
     if (!resumo) throw new ErroApiAnalises('SNAPSHOT_NAO_ENCONTRADO')
     return resumo
   }
-}
-
-function lerObjeto(request: Request): Promise<Record<string, unknown>> {
-  return request.json().then((corpo: unknown) => {
-    if (!corpo || typeof corpo !== 'object' || Array.isArray(corpo)) throw new ErroApiAnalises('REQUISICAO_INVALIDA')
-    return corpo as Record<string, unknown>
-  }).catch((erro) => {
-    if (erro instanceof ErroApiAnalises) throw erro
-    throw new ErroApiAnalises('REQUISICAO_INVALIDA')
-  })
 }
 
 function exigirUuid(valor: unknown) {

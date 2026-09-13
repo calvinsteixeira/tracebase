@@ -3,6 +3,41 @@ import { describe, expect, it, vi } from 'vitest'
 import { POST } from './elegibilidade/route'
 
 describe('POST /api/analises/elegibilidade', () => {
+  it('retorna requisição inválida para JSON malformado', async () => {
+    const buscar = vi.fn()
+    vi.stubGlobal('fetch', buscar)
+
+    const resposta = await POST(new Request('http://localhost/api/analises/elegibilidade', {
+      method: 'POST',
+      body: '{"url":',
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    expect(resposta.status).toBe(400)
+    expect((await resposta.json()).erro.codigo).toBe('REQUISICAO_INVALIDA')
+    expect(buscar).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['{}', 'corpo sem url'],
+    ['[]', 'corpo que não é objeto'],
+    ['null', 'corpo nulo'],
+    ['{"url":123}', 'url com tipo incorreto'],
+  ])('retorna requisição inválida para %s', async (body) => {
+    const buscar = vi.fn()
+    vi.stubGlobal('fetch', buscar)
+
+    const resposta = await POST(new Request('http://localhost/api/analises/elegibilidade', {
+      method: 'POST',
+      body,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    expect(resposta.status).toBe(400)
+    expect((await resposta.json()).erro.codigo).toBe('REQUISICAO_INVALIDA')
+    expect(buscar).not.toHaveBeenCalled()
+  })
+
   it('valida a URL no servidor antes de consultar o GitHub', async () => {
     const buscar = vi.fn()
     vi.stubGlobal('fetch', buscar)
