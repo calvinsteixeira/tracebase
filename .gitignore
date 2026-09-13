@@ -148,3 +148,6 @@ vite.config.ts.timestamp-*
 # Estado local da Supabase CLI
 supabase/.temp/
 supabase/.branches/
+
+# Configuração e artefatos locais da Vercel
+.vercel/
