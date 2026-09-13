@@ -7,9 +7,12 @@ import type { ResultadoElegibilidadeRepositorio } from '../services/criar-snapsh
 
 interface ResultadoElegibilidadeProps {
   resultado: ResultadoElegibilidadeRepositorio
+  onIniciar?: () => void
+  iniciando?: boolean
+  erroInicio?: string | null
 }
 
-export function ResultadoElegibilidade({ resultado }: ResultadoElegibilidadeProps) {
+export function ResultadoElegibilidade({ resultado, onIniciar, iniciando = false, erroInicio = null }: ResultadoElegibilidadeProps) {
   const t = useTranslations('elegibilidade')
   const formatador = useFormatter()
   const visual = obterVisualStatus(resultado.status)
@@ -65,12 +68,7 @@ export function ResultadoElegibilidade({ resultado }: ResultadoElegibilidadeProp
       className={`mt-8 rounded-2xl border bg-card p-6 shadow-sm ${visual.container}`}
     >
       <div className="mb-6">
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className={`flex items-center gap-3 rounded-xl border p-4 ${visual.statusContainer}`}
-        >
+        <div className={`flex items-center gap-3 rounded-xl border p-4 ${visual.statusContainer}`}>
           <visual.IconeStatus aria-hidden="true" className={`size-5 shrink-0 ${visual.statusText}`} />
           <p className={`text-sm font-semibold ${visual.statusText}`}>{statusLabel}</p>
         </div>
@@ -113,14 +111,26 @@ export function ResultadoElegibilidade({ resultado }: ResultadoElegibilidadeProp
       </dl>
 
       {mensagemDetalhe && (
-        <div
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className={`mt-6 rounded-xl border p-4 text-sm ${visual.detail}`}
-        >
+        <div className={`mt-6 rounded-xl border p-4 text-sm ${visual.detail}`}>
           {mensagemDetalhe}
         </div>
+      )}
+
+      {resultado.status === 'elegivel' && onIniciar && (
+        <button
+          type="button"
+          onClick={onIniciar}
+          disabled={iniciando}
+          className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
+        >
+          {iniciando ? t('iniciando') : t('iniciar')}
+        </button>
+      )}
+
+      {erroInicio && (
+        <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          {erroInicio}
+        </p>
       )}
     </section>
   )
