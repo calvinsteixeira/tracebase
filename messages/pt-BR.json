@@ -16,20 +16,6 @@
     "iniciar": "Iniciar análise",
     "iniciando": "Iniciando análise...",
     "novo": "Verificar outro repositório",
-    "erros": {
-      "URL_INVALIDA": "Informe uma URL canônica de repositório público do GitHub.",
-      "REQUISICAO_INVALIDA": "Revise os dados informados e tente novamente.",
-      "REQUEST_ID_CONFLITO": "Esta solicitação já foi usada com outros dados. Tente novamente.",
-      "SNAPSHOT_NAO_ENCONTRADO": "A análise não foi encontrada.",
-      "REPOSITORIO_INDISPONIVEL": "Não foi possível encontrar ou acessar esse repositório público.",
-      "REPOSITORIO_PRIVADO": "Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.",
-      "VERIFICACAO_INCONCLUSIVA": "Não foi possível confirmar os dados desse repositório agora.",
-      "LIMITE_GITHUB": "O GitHub não permitiu concluir a verificação agora. Tente novamente mais tarde.",
-      "GITHUB_INDISPONIVEL": "Não foi possível consultar o GitHub agora. Tente novamente mais tarde.",
-      "PUBLICACAO_RECUSADA": "Não foi possível iniciar a análise agora. Tente novamente mais tarde.",
-      "ERRO_INTERNO": "Não foi possível processar a solicitação agora. Tente novamente.",
-      "DESCONHECIDA": "Não foi possível processar a solicitação agora. Tente novamente."
-    },
     "inicioFalhou": "Não foi possível iniciar a análise. Tente novamente."
   },
   "elegibilidade": {
@@ -105,17 +91,26 @@
       "processando": "A análise está sendo processada.",
       "concluido": "A análise foi concluída.",
       "falha": "A análise terminou com falha."
-    },
-    "erros": {
-      "FONTE_INDISPONIVEL": "Não foi possível consultar os arquivos do repositório.",
-      "TEMPO_ESGOTADO": "O processamento excedeu o tempo permitido. Tente novamente.",
-      "CONFIGURACAO_INVALIDA": "A configuração do projeto não pôde ser interpretada.",
-      "LIMITE_REPOSITORIO": "O repositório ultrapassou os limites atuais de análise.",
-      "ERRO_PERSISTENCIA": "Não foi possível salvar o resultado da análise.",
-      "PUBLICACAO_RECUSADA": "Não foi possível iniciar o processamento da análise.",
-      "AGENDAMENTO_INTERROMPIDO": "O processamento não chegou a começar. Tente novamente.",
-      "ERRO_INTERNO": "Ocorreu uma falha inesperada. Tente novamente.",
-      "DESCONHECIDA": "Não foi possível concluir esta operação. Tente novamente."
     }
+  },
+  "erros": {
+    "URL_INVALIDA": "Informe uma URL canônica de repositório público do GitHub.",
+    "REQUISICAO_INVALIDA": "Revise os dados informados e tente novamente.",
+    "REQUEST_ID_CONFLITO": "Esta solicitação já foi usada com outros dados. Tente novamente.",
+    "SNAPSHOT_NAO_ENCONTRADO": "A análise não foi encontrada.",
+    "REPOSITORIO_INDISPONIVEL": "Não foi possível encontrar ou acessar esse repositório público.",
+    "REPOSITORIO_PRIVADO": "Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.",
+    "VERIFICACAO_INCONCLUSIVA": "Não foi possível confirmar os dados desse repositório agora.",
+    "LIMITE_GITHUB": "O GitHub não permitiu concluir a verificação agora. Tente novamente mais tarde.",
+    "GITHUB_INDISPONIVEL": "Não foi possível consultar o GitHub agora. Tente novamente mais tarde.",
+    "FONTE_INDISPONIVEL": "Não foi possível consultar os arquivos do repositório.",
+    "TEMPO_ESGOTADO": "O processamento excedeu o tempo permitido. Tente novamente.",
+    "CONFIGURACAO_INVALIDA": "A configuração do projeto não pôde ser interpretada.",
+    "LIMITE_REPOSITORIO": "O repositório ultrapassou os limites atuais de análise.",
+    "ERRO_PERSISTENCIA": "Não foi possível salvar o resultado da análise.",
+    "PUBLICACAO_RECUSADA": "Não foi possível iniciar o processamento da análise.",
+    "AGENDAMENTO_INTERROMPIDO": "O processamento não chegou a começar. Tente novamente.",
+    "ERRO_INTERNO": "Ocorreu uma falha inesperada. Tente novamente.",
+    "DESCONHECIDA": "Não foi possível concluir esta operação. Tente novamente."
   }
 }

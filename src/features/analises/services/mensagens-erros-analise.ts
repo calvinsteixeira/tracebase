@@ -1,5 +1,14 @@
 export function obterChaveMensagemErro(codigo: string) {
   switch (codigo) {
+    case 'URL_INVALIDA':
+    case 'REQUISICAO_INVALIDA':
+    case 'REQUEST_ID_CONFLITO':
+    case 'SNAPSHOT_NAO_ENCONTRADO':
+    case 'REPOSITORIO_INDISPONIVEL':
+    case 'REPOSITORIO_PRIVADO':
+    case 'VERIFICACAO_INCONCLUSIVA':
+    case 'LIMITE_GITHUB':
+    case 'GITHUB_INDISPONIVEL':
     case 'FONTE_INDISPONIVEL':
     case 'TEMPO_ESGOTADO':
     case 'CONFIGURACAO_INVALIDA':

@@ -26,6 +26,7 @@ export function CartaoAcompanhamentoAnalise({
   onTentarNovamente,
 }: CartaoAcompanhamentoAnaliseProps) {
   const t = useTranslations('analises')
+  const tErros = useTranslations('erros')
   const formatador = useFormatter()
 
   if (!resumo) {
@@ -87,18 +88,18 @@ export function CartaoAcompanhamentoAnalise({
       )}
 
       {resumo.falha && (
-        <div role="alert" aria-live="assertive" className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
           <div>
             <p className="font-semibold">{t('falhaTitulo')}</p>
-            <p className="mt-1">{t(`erros.${obterChaveMensagemErro(resumo.falha.codigo)}`)}</p>
+            <p className="mt-1">{tErros(obterChaveMensagemErro(resumo.falha.codigo))}</p>
           </div>
         </div>
       )}
 
       {erroNovaTentativa && (
         <p role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          {t('novaTentativaFalhou')}: {t(`erros.${obterChaveMensagemErro(erroNovaTentativa.codigo)}`)}
+          {t('novaTentativaFalhou')}: {tErros(obterChaveMensagemErro(erroNovaTentativa.codigo))}
         </p>
       )}
 
@@ -162,13 +163,14 @@ function Contagem({ label, value }: { label: string; value: number }) {
 
 function AvisoAtualizacao({ erro, onAtualizar }: { erro: ErroApiAnaliseCliente; onAtualizar?: () => void }) {
   const t = useTranslations('analises')
+  const tErros = useTranslations('erros')
   return (
-    <div role="status" aria-live="polite" className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+    <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
       <div className="flex items-start gap-3">
         <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
         <div>
           <p>{t('falhaAtualizacao')}</p>
-          <p className="mt-1 text-xs opacity-90">{t(`erros.${obterChaveMensagemErro(erro.codigo)}`)}</p>
+          <p className="mt-1 text-xs opacity-90">{tErros(obterChaveMensagemErro(erro.codigo))}</p>
         </div>
       </div>
       {onAtualizar && (

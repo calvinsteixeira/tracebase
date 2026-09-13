@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 
 import { useStatusAnalises } from '../hooks/use-analises'
 import { ErroApiAnaliseCliente, type ResumoStatusAnaliseCliente } from '../services/api-analises-cliente'
 import { removerAnalisesRecentes } from '../services/analises-recentes'
+import { obterChaveMensagemErro } from '../services/mensagens-erros-analise'
 import { CartaoAcompanhamentoAnalise } from './cartao-acompanhamento-analise'
 
 interface AnalisesRecentesProps {
@@ -16,10 +17,14 @@ interface AnalisesRecentesProps {
   errosRetry: Record<string, ErroApiAnaliseCliente>
   carregando: boolean
   onRemover: (ids: string[]) => void
+  onAnuncio?: (anuncio: string) => void
 }
 
-export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, errosRetry, carregando, onRemover }: AnalisesRecentesProps) {
+export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, errosRetry, carregando, onRemover, onAnuncio }: AnalisesRecentesProps) {
   const t = useTranslations('analises')
+  const tErros = useTranslations('erros')
+  const eventosAnunciados = useRef(new Set<string>())
+  const baselineInicializado = useRef(false)
   const idsVisiveis = ids.filter((id) => id !== idAtual)
   const consultas = useStatusAnalises(idsVisiveis)
 
@@ -37,6 +42,34 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, 
       onRemover(inexistentes)
     }
   }, [consultas, idsVisiveis, onRemover])
+
+  useEffect(() => {
+    const eventos = consultas.flatMap((consulta, indice) => {
+      const snapshotId = idsVisiveis[indice]
+      if (consulta.error instanceof ErroApiAnaliseCliente) {
+        return [{ chave: `${snapshotId}:atualizacao:${consulta.error.codigo}`, mensagem: `${t('falhaAtualizacao')} ${tErros(obterChaveMensagemErro(consulta.error.codigo))}` }]
+      }
+      if (consulta.data?.estado === 'falha' && consulta.data.falha) {
+        return [{ chave: `${snapshotId}:falha:${consulta.data.falha.codigo}`, mensagem: `${t('anuncio.falha')} ${tErros(obterChaveMensagemErro(consulta.data.falha.codigo))}` }]
+      }
+      return []
+    })
+
+    if (carregando || consultas.some((consulta) => consulta.isPending)) return
+
+    if (!baselineInicializado.current) {
+      for (const evento of eventos) eventosAnunciados.current.add(evento.chave)
+      baselineInicializado.current = true
+      return
+    }
+
+    for (const evento of eventos) {
+      if (!eventosAnunciados.current.has(evento.chave)) {
+        onAnuncio?.(evento.mensagem)
+        eventosAnunciados.current.add(evento.chave)
+      }
+    }
+  }, [carregando, consultas, idsVisiveis, onAnuncio, t, tErros])
 
   return (
     <section aria-labelledby="analises-recentes-titulo" className="mt-12">

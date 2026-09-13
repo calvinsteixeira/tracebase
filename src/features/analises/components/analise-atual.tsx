@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 
 import { useStatusAnalise } from '../hooks/use-analises'
 import { ErroApiAnaliseCliente } from '../services/api-analises-cliente'
+import { obterChaveMensagemErro } from '../services/mensagens-erros-analise'
 import { CartaoAcompanhamentoAnalise } from './cartao-acompanhamento-analise'
 
 interface AnaliseAtualProps {
@@ -12,18 +13,30 @@ interface AnaliseAtualProps {
   onTentarNovamente: (tentativa: number) => void
   tentandoNovamente: boolean
   erroNovaTentativa?: ErroApiAnaliseCliente | null
-  onEstadoAtualizado?: (anuncio: string) => void
+  onAnuncio?: (anuncio: string) => void
 }
 
-export function AnaliseAtual({ snapshotId, onTentarNovamente, tentandoNovamente, erroNovaTentativa, onEstadoAtualizado }: AnaliseAtualProps) {
+export function AnaliseAtual({ snapshotId, onTentarNovamente, tentandoNovamente, erroNovaTentativa, onAnuncio }: AnaliseAtualProps) {
   const t = useTranslations('analises')
+  const tErros = useTranslations('erros')
   const consulta = useStatusAnalise(snapshotId)
   const erro = consulta.error instanceof ErroApiAnaliseCliente ? consulta.error : null
   const estado = consulta.data?.estado
+  const codigoFalha = consulta.data?.falha?.codigo
+  const codigoErroAtualizacao = erro?.codigo
 
   useEffect(() => {
-    if (estado) onEstadoAtualizado?.(t(`anuncio.${estado}`))
-  }, [estado, onEstadoAtualizado, t])
+    if (!estado) return
+    const anuncio = codigoFalha && estado === 'falha'
+      ? `${t(`anuncio.${estado}`)} ${tErros(obterChaveMensagemErro(codigoFalha))}`
+      : t(`anuncio.${estado}`)
+    onAnuncio?.(anuncio)
+  }, [codigoFalha, estado, onAnuncio, t, tErros])
+
+  useEffect(() => {
+    if (!codigoErroAtualizacao) return
+    onAnuncio?.(`${t('falhaAtualizacao')} ${tErros(obterChaveMensagemErro(codigoErroAtualizacao))}`)
+  }, [codigoErroAtualizacao, onAnuncio, t, tErros])
 
   return (
     <section aria-labelledby="analise-atual-titulo" className="mt-12">

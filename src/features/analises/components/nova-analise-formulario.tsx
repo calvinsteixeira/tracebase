@@ -18,6 +18,7 @@ interface NovaAnaliseFormularioProps {
 
 export function NovaAnaliseFormulario({ onIniciar, iniciando = false, erroInicio = null }: NovaAnaliseFormularioProps = {}) {
   const t = useTranslations('home')
+  const tErros = useTranslations('erros')
   const formatador = useFormatter()
   const [url, setUrl] = useState('')
   const [erroCodigo, setErroCodigo] = useState<CodigoErroApiAnaliseCliente | null>(null)
@@ -31,7 +32,7 @@ export function NovaAnaliseFormulario({ onIniciar, iniciando = false, erroInicio
     onError: (erro: ErroApiAnaliseCliente) => setErroCodigo(erro.codigo),
   })
 
-  const mensagemErro = erroCodigo ? t(`erros.${erroCodigo}`) : null
+  const mensagemErro = erroCodigo ? tErros(erroCodigo) : null
 
   function enviarFormulario(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -22,7 +22,7 @@ import { NovaAnaliseFormulario } from './nova-analise-formulario'
 
 export function AcompanhamentoAnalises() {
   const queryClient = useQueryClient()
-  const tAnalises = useTranslations('analises')
+  const tErros = useTranslations('erros')
   const [idsRecentes, setIdsRecentes] = useState<string[] | null>(null)
   const [idAtual, setIdAtual] = useState<string | null>(null)
   const [erroInicio, setErroInicio] = useState<string | null>(null)
@@ -41,7 +41,7 @@ export function AcompanhamentoAnalises() {
       if (erro.resumo) {
         guardarResumo(erro.resumo)
       } else {
-        setErroInicio(tAnalises(`erros.${obterChaveMensagemErro(erro.codigo)}`))
+        setErroInicio(tErros(obterChaveMensagemErro(erro.codigo)))
       }
     },
   })
@@ -86,9 +86,9 @@ export function AcompanhamentoAnalises() {
         <AnaliseAtual
           snapshotId={idAtual}
           onTentarNovamente={(tentativa) => retry.mutate({ snapshotId: idAtual, tentativa })}
-          tentandoNovamente={retry.isPending}
+          tentandoNovamente={tentandoId === idAtual}
           erroNovaTentativa={errosRetry[idAtual]}
-          onEstadoAtualizado={setAnuncio}
+          onAnuncio={setAnuncio}
         />
       )}
 
@@ -99,6 +99,7 @@ export function AcompanhamentoAnalises() {
         tentandoId={tentandoId}
         errosRetry={errosRetry}
         carregando={idsRecentes === null}
+        onAnuncio={setAnuncio}
         onRemover={(ids) => setIdsRecentes((atuais) => (atuais ?? []).filter((id) => !ids.includes(id)))}
       />
 

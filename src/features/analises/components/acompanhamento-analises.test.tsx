@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NextIntlClientProvider } from 'next-intl'
 import { describe, expect, beforeEach, afterEach, it, vi } from 'vitest'
@@ -232,6 +232,59 @@ describe('AcompanhamentoAnalises', () => {
     expect(cartoes[0]).not.toHaveTextContent('Não foi possível iniciar o processamento da análise.')
     expect(cartoes[1]).toHaveTextContent('Não foi possível iniciar o processamento da análise.')
     expect(cartoes[1]).not.toHaveTextContent('Não foi possível salvar o resultado da análise.')
+  })
+
+  it.each([
+    ['REPOSITORIO_INDISPONIVEL', 'Não foi possível encontrar ou acessar esse repositório público.'],
+    ['REPOSITORIO_PRIVADO', 'Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.'],
+    ['LIMITE_GITHUB', 'O GitHub não permitiu concluir a verificação agora. Tente novamente mais tarde.'],
+    ['GITHUB_INDISPONIVEL', 'Não foi possível consultar o GitHub agora. Tente novamente mais tarde.'],
+    ['CONFIGURACAO_INVALIDA', 'A configuração do projeto não pôde ser interpretada.'],
+  ] as const)('apresenta a mensagem específica para %s', (codigo, mensagem) => {
+    render(
+      <NextIntlClientProvider locale="pt-BR" timeZone="America/Araguaina" messages={messages}>
+        <CartaoAcompanhamentoAnalise resumo={resumo({ estado: 'falha', falha: { ...falha(), codigo } })} />
+      </NextIntlClientProvider>,
+    )
+
+    expect(screen.getByText(mensagem)).toBeInTheDocument()
+  })
+
+  it('não transforma falhas antigas em regiões assertivas', () => {
+    render(
+      <NextIntlClientProvider locale="pt-BR" timeZone="America/Araguaina" messages={messages}>
+        <CartaoAcompanhamentoAnalise resumo={resumo({ estado: 'falha', falha: falha() })} />
+        <CartaoAcompanhamentoAnalise resumo={{ ...resumo({ estado: 'falha', falha: falha() }), idPublico: retryId }} />
+      </NextIntlClientProvider>,
+    )
+
+    expect(screen.queryAllByRole('alert')).toHaveLength(0)
+  })
+
+  it('mantém o loading do retry somente no card acionado', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('tracebase:analises-recentes:v1', JSON.stringify([retryId]))
+    let resolver: ((resposta: Response) => void) | undefined
+    vi.stubGlobal('fetch', vi.fn((endereco: string) => {
+      if (endereco === '/api/analises/elegibilidade') return Promise.resolve(resposta(elegibilidade()))
+      if (endereco === '/api/analises') return Promise.resolve(resposta(resumo({ estado: 'falha', falha: falha() })))
+      if (endereco.includes('/tentativas')) return new Promise<Response>((resolve) => { resolver = resolve })
+      return Promise.resolve(resposta({ ...resumo({ estado: 'falha', falha: falha() }), idPublico: retryId }))
+    }))
+
+    renderTela()
+    await verificar(user)
+    await user.click(screen.getByRole('button', { name: 'Iniciar análise' }))
+    const cartoes = await screen.findAllByRole('article')
+    expect(cartoes).toHaveLength(2)
+
+    await user.click(within(cartoes[1]).getByRole('button', { name: 'Tentar novamente' }))
+    expect(within(cartoes[0]).getByRole('button', { name: 'Tentar novamente' })).toBeEnabled()
+    expect(within(cartoes[1]).getByRole('button', { name: 'Tentando novamente...' })).toBeDisabled()
+
+    await waitFor(() => expect(resolver).toBeDefined())
+    resolver?.(resposta({ ...resumo({ estado: 'aguardando', tentativa: 2 }), idPublico: retryId }))
+    expect(await screen.findByRole('button', { name: 'Tentar novamente' })).toBeEnabled()
   })
 
   it('preserva o último resumo quando uma atualização temporária falha', () => {
