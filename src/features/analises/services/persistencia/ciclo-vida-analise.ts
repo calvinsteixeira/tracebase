@@ -14,6 +14,8 @@ export type CodigoFalhaAnalise =
   | 'CONFIGURACAO_INVALIDA'
   | 'LIMITE_REPOSITORIO'
   | 'ERRO_PERSISTENCIA'
+  | 'PUBLICACAO_RECUSADA'
+  | 'AGENDAMENTO_INTERROMPIDO'
   | 'ERRO_INTERNO'
 
 export type ValorDetalheFalha = string | number | boolean | null
@@ -33,6 +35,46 @@ export interface FalhaAnaliseParaRegistro {
   categoria: CategoriaFalhaAnalise
   mensagem: string
   detalhes?: DetalhesFalhaAnalise
+}
+
+export type OperacaoSolicitacaoAnalise = 'criacao' | 'retry'
+
+export interface SolicitacaoAnalise {
+  requestId: string
+  operacao: OperacaoSolicitacaoAnalise
+  snapshotId: string
+  urlNormalizada: string | null
+  tentativaEsperada: number | null
+  tentativaResultante: number
+  criadoEm: string
+}
+
+export type ResultadoSolicitacaoAnalise =
+  | { tipo: 'criada'; solicitacao: SolicitacaoAnalise }
+  | { tipo: 'repetida'; solicitacao: SolicitacaoAnalise }
+  | { tipo: 'conflito'; solicitacao: SolicitacaoAnalise }
+
+export interface ResumoStatusAnalise {
+  idPublico: string
+  repositorio: DadosCriacaoSnapshotAnalise['repositorio']
+  commitSha: string
+  referencia: string
+  estado: EstadoAnalise
+  etapa: EtapaAnalise | null
+  tentativa: number
+  tentativaIniciadaEm: string | null
+  ultimaAtividadeEm: string | null
+  atualizadoEm: string
+  finalizadoEm: string | null
+  demorada: boolean
+  falha: FalhaAnalise | null
+  contagens: {
+    arquivos: number
+    simbolos: number
+    exportacoes: number
+    relacoesImportacao: number
+    diagnosticos: number
+  } | null
 }
 
 export interface DadosCriacaoSnapshotAnalise {
@@ -119,4 +161,30 @@ export interface RepositorioCicloVidaAnalise {
     tentativaEsperada: number
     agora: string
   }): Promise<SnapshotCicloVidaAnalise | null>
+  buscarSolicitacao?(requestId: string): Promise<SolicitacaoAnalise | null>
+  criarOuReutilizarComSolicitacao?(input: DadosCriacaoSnapshotAnalise & {
+    requestId: string
+    urlNormalizada: string
+  }): Promise<{
+    snapshot: SnapshotCicloVidaAnalise
+    solicitacao: SolicitacaoAnalise
+    publicar: boolean
+    resultado: ResultadoSolicitacaoAnalise['tipo']
+  }>
+  iniciarNovaTentativaComSolicitacao?(input: {
+    requestId: string
+    idPublico: string
+    tentativaEsperada: number
+    agora: string
+  }): Promise<{
+    snapshot: SnapshotCicloVidaAnalise | null
+    solicitacao: SolicitacaoAnalise | null
+    publicar: boolean
+    resultado: ResultadoSolicitacaoAnalise['tipo'] | 'tentativa_desatualizada'
+  }>
+  obterResumoStatus?(input: {
+    idPublico: string
+    agora: string
+    limiteAguardandoMs: number
+  }): Promise<ResumoStatusAnalise | null>
 }

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { POST } from './route'
+import { POST } from './elegibilidade/route'
 
-describe('POST /api/analises', () => {
+describe('POST /api/analises/elegibilidade', () => {
   it('valida a URL no servidor antes de consultar o GitHub', async () => {
     const buscar = vi.fn()
     vi.stubGlobal('fetch', buscar)

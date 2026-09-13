@@ -75,7 +75,7 @@ describe('NovaAnaliseFormulario', () => {
 
     expect(screen.getByRole('heading', { name: 'dono/repositorio' })).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
-      '/api/analises',
+      '/api/analises/elegibilidade',
       expect.objectContaining({ method: 'POST' }),
     )
   })

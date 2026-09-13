@@ -131,7 +131,7 @@ async function verificarRepositorio(url: string): Promise<ResultadoElegibilidade
   }
 
   try {
-    const resposta = await fetch('/api/analises', {
+    const resposta = await fetch('/api/analises/elegibilidade', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: url.trim() }),
