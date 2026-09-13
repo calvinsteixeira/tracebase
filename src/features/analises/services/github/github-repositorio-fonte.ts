@@ -441,7 +441,7 @@ function decodificarBase64(conteudo: string) {
 
 export function mapearErroFonteGitHub(erro: unknown) {
   if (!(erro instanceof ErroFonteGitHub)) {
-    return 'GITHUB_INDISPONIVEL' as const
+    return null
   }
 
   if (erro.codigo === 'REPOSITORIO_PRIVADO') {

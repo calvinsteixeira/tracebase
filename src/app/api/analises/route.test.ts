@@ -1,8 +1,43 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { POST } from './route'
+import { POST } from './elegibilidade/route'
 
-describe('POST /api/analises', () => {
+describe('POST /api/analises/elegibilidade', () => {
+  it('retorna requisição inválida para JSON malformado', async () => {
+    const buscar = vi.fn()
+    vi.stubGlobal('fetch', buscar)
+
+    const resposta = await POST(new Request('http://localhost/api/analises/elegibilidade', {
+      method: 'POST',
+      body: '{"url":',
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    expect(resposta.status).toBe(400)
+    expect((await resposta.json()).erro.codigo).toBe('REQUISICAO_INVALIDA')
+    expect(buscar).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['{}', 'corpo sem url'],
+    ['[]', 'corpo que não é objeto'],
+    ['null', 'corpo nulo'],
+    ['{"url":123}', 'url com tipo incorreto'],
+  ])('retorna requisição inválida para %s', async (body) => {
+    const buscar = vi.fn()
+    vi.stubGlobal('fetch', buscar)
+
+    const resposta = await POST(new Request('http://localhost/api/analises/elegibilidade', {
+      method: 'POST',
+      body,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    expect(resposta.status).toBe(400)
+    expect((await resposta.json()).erro.codigo).toBe('REQUISICAO_INVALIDA')
+    expect(buscar).not.toHaveBeenCalled()
+  })
+
   it('valida a URL no servidor antes de consultar o GitHub', async () => {
     const buscar = vi.fn()
     vi.stubGlobal('fetch', buscar)
@@ -71,5 +106,49 @@ describe('POST /api/analises', () => {
       },
     })
     expect(JSON.stringify(buscar.mock.calls)).not.toContain('GITHUB_TOKEN')
+  })
+
+  it.each([
+    [404, 'REPOSITORIO_INDISPONIVEL'],
+    [429, 'LIMITE_GITHUB'],
+    [503, 'GITHUB_INDISPONIVEL'],
+  ] as const)('preserva erro conhecido do GitHub (%s)', async (status, codigo) => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response('{}', { status })))
+
+    const resposta = await POST(new Request('http://localhost/api/analises/elegibilidade', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://github.com/dono/repositorio' }),
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    expect(resposta.status).toBe(status)
+    expect((await resposta.json()).erro.codigo).toBe(codigo)
+  })
+
+  it('preserva verificação inconclusiva como 422', async () => {
+    const respostas = [
+      { full_name: 'dono/repositorio', html_url: 'https://github.com/dono/repositorio', private: false, default_branch: 'main' },
+      { sha: 'f'.repeat(40) },
+      { truncated: true, tree: [] },
+    ]
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(JSON.stringify(respostas.shift()), { status: 200 })))
+
+    const resposta = await POST(new Request('http://localhost/api/analises/elegibilidade', {
+      method: 'POST', body: JSON.stringify({ url: 'https://github.com/dono/repositorio' }), headers: { 'Content-Type': 'application/json' },
+    }))
+
+    expect(resposta.status).toBe(422)
+    expect((await resposta.json()).erro.codigo).toBe('VERIFICACAO_INCONCLUSIVA')
+  })
+
+  it('preserva repositório privado como 404', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ private: true }), { status: 200 })))
+
+    const resposta = await POST(new Request('http://localhost/api/analises/elegibilidade', {
+      method: 'POST', body: JSON.stringify({ url: 'https://github.com/dono/repositorio' }), headers: { 'Content-Type': 'application/json' },
+    }))
+
+    expect(resposta.status).toBe(404)
+    expect((await resposta.json()).erro.codigo).toBe('REPOSITORIO_PRIVADO')
   })
 })

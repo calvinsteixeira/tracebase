@@ -350,6 +350,28 @@ O PostgreSQL é o único banco de dados oficial do Tracebase. Durante o desenvol
 - Não execute migrations de produção durante builds, previews da Vercel ou qualquer job de CI nesta fase. A pipeline não deve apontar para Supabase nem para outro banco persistente. A aplicação de migrations em produção será uma etapa controlada quando o ambiente hospedado for configurado. Bytebase não deve ser adicionado sem uma necessidade explícita de governança de mudanças de banco.
 - Migrations são obrigatórias nos testes de integração contra um PostgreSQL temporário e descartável. O job independente que executa esse fluxo deve se chamar exatamente `Integração PostgreSQL`; ele pode reutilizar `pnpm test:integration`, que sobe o Compose local do runner, recria a base, aplica as migrations e executa os testes.
 
+## API assíncrona e idempotência HTTP
+
+As rotas públicas devem separar verificação, solicitação e consulta de estado:
+
+```text
+POST /api/analises/elegibilidade       → consulta e valida o repositório
+POST /api/analises                     → cria ou reutiliza uma análise e agenda o processamento
+GET  /api/analises/{snapshotId}        → retorna um resumo seguro do estado
+POST /api/analises/{snapshotId}/tentativas → solicita retry de uma falha
+```
+
+- O servidor valida novamente URL, `requestId`, tentativa esperada e elegibilidade; nunca confie em validação feita no navegador.
+- `requestId` é um UUID de idempotência da operação. A repetição compatível deve devolver a decisão já registrada sem consultar novamente o GitHub, publicar outra mensagem ou incrementar a tentativa.
+- Um mesmo `requestId` usado com outra URL, snapshot, tentativa ou operação é conflito; não tente “corrigir” a solicitação reutilizando o identificador.
+- A decisão de associar a solicitação ao snapshot e à tentativa deve ser atômica no PostgreSQL. Não use uma leitura seguida de atualização desprotegida para simular idempotência.
+- A mensagem da fila contém somente `{ snapshotId, tentativa }`; a chave deve ser `analise:{snapshotId}:{tentativa}`. A rota não deve importar Vercel Queues nem conhecer detalhes do consumidor.
+- `FilaDeAnalises` é um contrato interno. A implementação local pode chamar o executor existente, mas o caso de uso não deve duplicar o fluxo do consumidor nem aguardar sua execução completa para responder.
+- Falha ao publicar pode registrar uma falha segura somente se o snapshot ainda estiver na tentativa aguardando. Se outro consumidor já adquiriu ou concluiu, preserve o estado observado.
+- Aguardando sem atividade por mais de 60 segundos deve ser marcado atomicamente como falha transitória recuperável. O limite pode ser ajustado operacionalmente por `TRACEBASE_SCHEDULE_TIMEOUT_MS`, sem remover o valor padrão claro do domínio.
+- A resposta de status nunca expõe lease, ID interno do banco, índice completo, conteúdo-fonte, AST, stack trace, token ou resposta bruta de fornecedor. Contagens devem vir de consultas agregadas próprias.
+- Migrations de produção continuam proibidas em builds, previews e CI nesta fase; somente os testes de integração usam migrations contra PostgreSQL temporário.
+
 ## Internacionalização
 
 Use `next-intl` como a única camada de resolução de textos da interface. O único locale do projeto neste momento é `pt-BR`; não crie `en.json`, rotas localizadas, seletor de idioma ou fallbacks para outro idioma até que isso seja solicitado. O locale padrão deve ser explícito e os catálogos devem ser tipados quando a configuração permitir.
