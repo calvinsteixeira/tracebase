@@ -33,7 +33,7 @@ function carregarAmbienteLocal() {
   return { ...ambiente, ...process.env }
 }
 
-function obterConfiguracao(ambiente) {
+export function obterConfiguracao(ambiente) {
   const url = ambiente.DATABASE_URL || urlLocalPadrao
   const analisada = new URL(url)
 
@@ -42,6 +42,10 @@ function obterConfiguracao(ambiente) {
     banco: decodeURIComponent(analisada.pathname.slice(1)) || ambiente.POSTGRES_DB || 'tracebase',
     usuario: decodeURIComponent(analisada.username) || ambiente.POSTGRES_USER || 'tracebase',
   }
+}
+
+export function criarAmbienteAplicacao(ambiente, configuracao) {
+  return { ...ambiente, DATABASE_URL: configuracao.url }
 }
 
 function garantirBancoLocal(configuracao) {
@@ -85,7 +89,7 @@ function executarCompose(argumentos, opcoes = {}) {
 
 function executarSupabase(argumentos, configuracao) {
   executar('pnpm', ['exec', 'supabase', ...argumentos], {
-    env: { ...carregarAmbienteLocal(), DATABASE_URL: configuracao.url },
+    env: criarAmbienteAplicacao(carregarAmbienteLocal(), configuracao),
   })
 }
 
@@ -204,7 +208,9 @@ async function main() {
   throw new Error('Comando desconhecido. Use up, migrate, reset, dev ou test:integration.')
 }
 
-main().catch((erro) => {
-  console.error(erro instanceof Error ? erro.message : 'Falha na operação do PostgreSQL local.')
-  process.exitCode = 1
-})
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((erro) => {
+    console.error(erro instanceof Error ? erro.message : 'Falha na operação do PostgreSQL local.')
+    process.exitCode = 1
+  })
+}
