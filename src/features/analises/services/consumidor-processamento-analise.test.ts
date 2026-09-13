@@ -267,6 +267,14 @@ describe('consumidor de processamento de análise', () => {
     const persistenciaBloqueada = new Promise<void>((resolve) => {
       liberarPersistencia = resolve
     })
+    let persistenciaSolicitada!: () => void
+    const persistenciaSolicitadaPromise = new Promise<void>((resolve) => {
+      persistenciaSolicitada = resolve
+    })
+    let persistenciaConcluida!: () => void
+    const persistenciaConcluidaPromise = new Promise<void>((resolve) => {
+      persistenciaConcluida = resolve
+    })
     let liberarFalha!: () => void
     const falhaBloqueada = new Promise<void>((resolve) => {
       liberarFalha = resolve
@@ -290,8 +298,11 @@ describe('consumidor de processamento de análise', () => {
       salvarEConcluir: vi.fn(async (
         input: Parameters<typeof ambiente.persistencia.salvarEConcluir>[0],
       ) => {
+        persistenciaSolicitada()
         await persistenciaBloqueada
-        return ambiente.persistencia.salvarEConcluir(input)
+        const resultado = await ambiente.persistencia.salvarEConcluir(input)
+        persistenciaConcluida()
+        return resultado
       }),
     }
     const consumidor = criarConsumidorProcessamentoAnalise({
@@ -303,16 +314,12 @@ describe('consumidor de processamento de análise', () => {
     })
 
     const processamento = consumidor.processar(ambiente.mensagem)
-    await vi.waitFor(() => expect(persistencia.salvarEConcluir).toHaveBeenCalled())
+    await persistenciaSolicitadaPromise
     await timers.dispararTimeouts(100)
     await falhaSolicitadaPromise
 
     liberarPersistencia()
-    await vi.waitFor(async () => {
-      await expect(ambiente.cicloVida.buscarPorIdPublico(ambiente.snapshotId)).resolves.toMatchObject({
-        estado: 'concluido',
-      })
-    })
+    await persistenciaConcluidaPromise
     liberarFalha()
 
     await expect(processamento).resolves.toMatchObject({ tipo: 'concluido' })
