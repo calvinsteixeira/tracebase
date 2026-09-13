@@ -61,6 +61,36 @@ describe('criarFonteRepositorioGitHub', () => {
     )
   })
 
+  it('obtém a árvore por um commit explícito, sem consultar a branch', async () => {
+    const commitSha = '9'.repeat(40)
+    const buscar = vi.fn<typeof fetch>(async () =>
+      new Response(
+        JSON.stringify({
+          truncated: false,
+          tree: [{ path: 'src/index.ts', sha: '8'.repeat(40), type: 'blob' }],
+        }),
+        { status: 200 },
+      ),
+    )
+    const fonte = criarFonteRepositorioGitHub({ buscar })
+
+    await expect(
+      fonte.obterArvore({
+        repositorio: {
+          url: 'https://github.com/dono/repositorio',
+          proprietario: 'dono',
+          nome: 'repositorio',
+        },
+        commitSha,
+      }),
+    ).resolves.toEqual([
+      { caminho: 'src/index.ts', sha: '8'.repeat(40) },
+    ])
+    expect(buscar).toHaveBeenCalledTimes(1)
+    expect(buscar.mock.calls[0]?.[0]).toContain(`/git/trees/${commitSha}?recursive=1`)
+    expect(buscar.mock.calls[0]?.[0]).not.toContain('/commits/')
+  })
+
   it('mapeia árvore truncada para verificação inconclusiva', async () => {
     const buscar = vi
       .fn()
@@ -102,7 +132,6 @@ describe('criarFonteRepositorioGitHub', () => {
     await expect(
       fonte.obterConfiguracao?.({
         repositorio: {
-          id: 'repositorio:teste',
           url: 'https://github.com/dono/repositorio',
           proprietario: 'dono',
           nome: 'repositorio',
@@ -127,7 +156,6 @@ describe('criarFonteRepositorioGitHub', () => {
     await expect(
       fonte.obterConfiguracao?.({
         repositorio: {
-          id: 'repositorio:teste',
           url: 'https://github.com/dono/repositorio',
           proprietario: 'dono',
           nome: 'repositorio',
@@ -163,7 +191,6 @@ describe('criarFonteRepositorioGitHub', () => {
     await expect(
       fonte.obterConfiguracao?.({
         repositorio: {
-          id: 'repositorio:teste',
           url: 'https://github.com/dono/repositorio',
           proprietario: 'dono',
           nome: 'repositorio',

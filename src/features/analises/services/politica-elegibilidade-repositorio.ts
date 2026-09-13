@@ -1,4 +1,4 @@
-import type { ArquivoArvoreGitHub } from './github/github-repositorio.types'
+import type { ArquivoArvoreRepositorio } from './fonte-repositorio'
 
 export const LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO = {
   quantidadeMaximaArquivosElegiveis: 250,
@@ -46,7 +46,7 @@ const diretoriosGerados = new Set([
   'out',
 ])
 
-export function filtrarArquivosElegiveis(arquivos: ArquivoArvoreGitHub[]) {
+export function filtrarArquivosElegiveis(arquivos: ArquivoArvoreRepositorio[]) {
   return arquivos.filter((arquivo) => {
     const segmentos = arquivo.caminho.split('/')
     const nome = segmentos.at(-1)?.toLowerCase() ?? ''
@@ -61,7 +61,7 @@ export function filtrarArquivosElegiveis(arquivos: ArquivoArvoreGitHub[]) {
 }
 
 export function avaliarElegibilidadeRepositorio(
-  arquivos: ArquivoArvoreGitHub[],
+  arquivos: ArquivoArvoreRepositorio[],
   limites: LimitesElegibilidadeRepositorio,
 ): AvaliacaoElegibilidadeRepositorio {
   const arquivosElegiveis = filtrarArquivosElegiveis(arquivos)
@@ -149,11 +149,11 @@ export function avaliarElegibilidadeRepositorio(
   }
 }
 
-function somarTamanhosConhecidos(arquivos: ArquivoArvoreGitHub[]) {
+function somarTamanhosConhecidos(arquivos: ArquivoArvoreRepositorio[]) {
   return arquivos.reduce((total, arquivo) => total + (arquivo.tamanhoBytes ?? 0), 0)
 }
 
-function obterTamanhoTotal(arquivos: ArquivoArvoreGitHub[]) {
+function obterTamanhoTotal(arquivos: ArquivoArvoreRepositorio[]) {
   if (arquivos.some((arquivo) => arquivo.tamanhoBytes === undefined)) {
     return null
   }

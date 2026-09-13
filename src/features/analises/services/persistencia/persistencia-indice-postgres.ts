@@ -175,14 +175,45 @@ export function criarRepositorioPersistenciaIndicePostgres(
               AND tentativa = $2
               AND lease_id = $3::uuid
               AND estado = 'processando'
-              AND lease_expira_em > $4::timestamptz
+              AND lease_expira_em > clock_timestamp()
+              AND clock_timestamp() < $5::timestamptz
             RETURNING id
           `,
-          [input.snapshotIdPublico, input.tentativa, input.leaseId, input.agora],
+          [
+            input.snapshotIdPublico,
+            input.tentativa,
+            input.leaseId,
+            input.agora,
+            input.prazoExpiraEm,
+          ],
         )
 
         if (conclusao.rowCount !== 1) {
-          throw new Error('O lease deixou de ser válido durante a conclusão.')
+          const validade = await cliente.query<{
+            lease_valido: boolean
+            prazo_valido: boolean
+          }>(
+            `
+              SELECT
+                lease_id = $3::uuid
+                AND tentativa = $2
+                AND estado = 'processando'
+                AND lease_expira_em > clock_timestamp() AS lease_valido,
+                clock_timestamp() < $4::timestamptz AS prazo_valido
+              FROM snapshots
+              WHERE id_publico = $1::uuid
+            `,
+            [
+              input.snapshotIdPublico,
+              input.tentativa,
+              input.leaseId,
+              input.prazoExpiraEm,
+            ],
+          )
+          await cliente.query('ROLLBACK')
+          if (!validade.rows[0]?.lease_valido) return { tipo: 'lease_invalido' }
+          if (!validade.rows[0].prazo_valido) return { tipo: 'prazo_expirado' }
+          throw new Error('A conclusão não pôde validar o estado do snapshot.')
         }
 
         await cliente.query('COMMIT')

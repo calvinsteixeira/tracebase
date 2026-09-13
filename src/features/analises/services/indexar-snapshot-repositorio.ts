@@ -2,13 +2,13 @@ import type {
   ArquivoFonte,
   ConfiguracaoProjeto,
   IndiceAnalise,
-  Repositorio,
   IdentidadeSnapshotIndice,
 } from '../analises.types'
-import type { ArquivoArvoreGitHub } from './github/github-repositorio.types'
 import { filtrarArquivosElegiveis } from './politica-elegibilidade-repositorio'
 import {
+  type ArquivoArvoreRepositorio,
   ErroFonteRepositorio,
+  type ReferenciaRepositorio,
   TAMANHO_MAXIMO_CONFIGURACAO_BYTES,
   type FonteDeRepositorio,
 } from './fonte-repositorio'
@@ -20,20 +20,21 @@ export interface LimitesConteudoRepositorio {
 }
 
 export interface EntradaIndexacaoSnapshot {
-  repositorio: Repositorio
+  repositorio: ReferenciaRepositorio
   snapshot: IdentidadeSnapshotIndice
-  arquivos: ArquivoArvoreGitHub[]
+  arquivos: ArquivoArvoreRepositorio[]
 }
 
 export interface SolicitarIndexacaoSnapshot {
   entrada: EntradaIndexacaoSnapshot
   fonte: FonteDeRepositorio
   indexador: (input: {
-  snapshot: IdentidadeSnapshotIndice
+    snapshot: IdentidadeSnapshotIndice
     arquivosFonte: ArquivoFonte[]
     configuracao?: ConfiguracaoProjeto
   }) => IndiceAnalise
   limites: LimitesConteudoRepositorio
+  antesDeIndexar?: () => void | Promise<void>
 }
 
 export async function indexarSnapshotRepositorio({
@@ -41,6 +42,7 @@ export async function indexarSnapshotRepositorio({
   fonte,
   indexador,
   limites,
+  antesDeIndexar,
 }: SolicitarIndexacaoSnapshot): Promise<IndiceAnalise> {
   const arquivosElegiveis = filtrarArquivosElegiveis(entrada.arquivos)
 
@@ -76,7 +78,7 @@ export async function indexarSnapshotRepositorio({
     }))
 
   if (arquivosConfiguracao.length > 0 && !fonte.obterConfiguracao) {
-    throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+    throw new ErroFonteRepositorio('ERRO_INTERNO')
   }
 
   let configuracao: ConfiguracaoProjeto | undefined
@@ -89,19 +91,13 @@ export async function indexarSnapshotRepositorio({
         arquivos: arquivosConfiguracao,
       })
     } catch (erro) {
-      if (
-        erro instanceof ErroFonteRepositorio &&
-        erro.codigo === 'CONFIGURACAO_TAMANHO'
-      ) {
-        throw erro
-      }
-
-      throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+      if (erro instanceof ErroFonteRepositorio) throw erro
+      throw new ErroFonteRepositorio('ERRO_INTERNO')
     }
   }
 
   if (arquivosConfiguracao.length > 0 && !configuracao) {
-    throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+    throw new ErroFonteRepositorio('ERRO_INTERNO')
   }
 
   if (
@@ -111,6 +107,8 @@ export async function indexarSnapshotRepositorio({
   ) {
     throw new ErroFonteRepositorio('CONFIGURACAO_TAMANHO')
   }
+
+  await antesDeIndexar?.()
 
   return indexador({
     snapshot: entrada.snapshot,

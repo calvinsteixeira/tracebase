@@ -5,17 +5,35 @@ import type {
   Repositorio,
 } from '../analises.types'
 
+export interface ArquivoArvoreRepositorio {
+  caminho: string
+  sha: string
+  tamanhoBytes?: number
+}
+
+export type ReferenciaRepositorio = Pick<
+  Repositorio,
+  'url' | 'proprietario' | 'nome'
+>
+
 export interface FonteDeRepositorio {
   obterArquivos(input: {
-    repositorio: Repositorio
+    repositorio: ReferenciaRepositorio
     commitSha: string
     arquivos: ArquivoDoSnapshot[]
   }): Promise<ArquivoFonte[]>
   obterConfiguracao?(input: {
-    repositorio: Repositorio
+    repositorio: ReferenciaRepositorio
     commitSha: string
     arquivos: ArquivoDoSnapshot[]
   }): Promise<ConfiguracaoProjeto | undefined>
+}
+
+export interface FonteDeRepositorioComArvore extends FonteDeRepositorio {
+  obterArvore(input: {
+    repositorio: ReferenciaRepositorio
+    commitSha: string
+  }): Promise<ArquivoArvoreRepositorio[]>
 }
 
 export type CodigoErroFonteRepositorio =
@@ -33,6 +51,7 @@ export type CodigoErroFonteRepositorio =
   | 'CONFIGURACAO_TAMANHO'
   | 'CONFIGURACAO_INVALIDA'
   | 'CONFIGURACAO_NAO_SUPORTADA'
+  | 'ERRO_INTERNO'
 
 export const TAMANHO_MAXIMO_CONFIGURACAO_BYTES = 512 * 1024
 
