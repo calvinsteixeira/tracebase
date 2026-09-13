@@ -25,7 +25,7 @@ afterAll(async () => {
 
 describe('idempotência da API no PostgreSQL', () => {
   it('decide uma única criação para chamadas concorrentes com o mesmo requestId', async () => {
-    const entradas = Array.from({ length: 8 }, () => ciclo.criarOuReutilizarComSolicitacao?.({
+    const entradas = Array.from({ length: 8 }, () => ciclo.criarOuReutilizarComSolicitacao({
       ...base, requestId: '77777777-7777-4777-8777-777777777777', urlNormalizada: url,
     }))
     const resultados = await Promise.all(entradas)
@@ -44,8 +44,8 @@ describe('idempotência da API no PostgreSQL', () => {
       falha: { codigo: 'PUBLICACAO_RECUSADA', categoria: 'transitoria', mensagem: 'fila recusou' },
     })
     const resultados = await Promise.all([
-      ciclo.iniciarNovaTentativaComSolicitacao?.({ requestId: '88888888-8888-4888-8888-888888888888', idPublico: criado.idPublico, tentativaEsperada: 1, agora: '2026-09-12T18:00:01.000Z' }),
-      ciclo.iniciarNovaTentativaComSolicitacao?.({ requestId: '99999999-9999-4999-8999-999999999999', idPublico: criado.idPublico, tentativaEsperada: 1, agora: '2026-09-12T18:00:01.000Z' }),
+      ciclo.iniciarNovaTentativaComSolicitacao({ requestId: '88888888-8888-4888-8888-888888888888', idPublico: criado.idPublico, tentativaEsperada: 1, agora: '2026-09-12T18:00:01.000Z' }),
+      ciclo.iniciarNovaTentativaComSolicitacao({ requestId: '99999999-9999-4999-8999-999999999999', idPublico: criado.idPublico, tentativaEsperada: 1, agora: '2026-09-12T18:00:01.000Z' }),
     ])
     const snapshot = await ciclo.buscarPorIdPublico(criado.idPublico)
 
@@ -55,10 +55,23 @@ describe('idempotência da API no PostgreSQL', () => {
 
   it('marca espera sem atividade como falha recuperável e retorna apenas o resumo', async () => {
     const criado = await ciclo.criarOuReutilizar({ ...base, commitSha: 'd'.repeat(40) })
-    const resumo = await ciclo.obterResumoStatus?.({ idPublico: criado.idPublico, agora: '2026-09-12T18:01:01.000Z', limiteAguardandoMs: 60_000 })
+    const antes = await ciclo.obterResumoStatus({ idPublico: criado.idPublico, agora: '2026-09-12T18:00:30.000Z', limiteAguardandoMs: 60_000, limiteDemoradaMs: 30_000 })
+    expect(antes?.estado).toBe('aguardando')
+    const resumo = await ciclo.obterResumoStatus({ idPublico: criado.idPublico, agora: '2026-09-12T18:01:01.000Z', limiteAguardandoMs: 60_000, limiteDemoradaMs: 30_000 })
 
-    expect(resumo).toMatchObject({ estado: 'falha', demorada: true, falha: { codigo: 'AGENDAMENTO_INTERROMPIDO' } })
+    expect(resumo).toMatchObject({ estado: 'falha', demorada: false, falha: { codigo: 'AGENDAMENTO_INTERROMPIDO' } })
     expect(resumo).not.toHaveProperty('leaseId')
     expect(resumo).not.toHaveProperty('indice')
+  })
+
+  it('sinaliza processamento demorado desde o início mesmo após heartbeat', async () => {
+    const criado = await ciclo.criarOuReutilizar({ ...base, commitSha: '1'.repeat(40), agora: '2026-09-12T20:00:00.000Z' })
+    const adquirido = await ciclo.adquirirProcessamento({ idPublico: criado.idPublico, tentativa: 1, agora: '2026-09-12T20:00:00.000Z', leaseExpiraEm: '2026-09-12T20:02:00.000Z' })
+    if (adquirido.tipo !== 'adquirido') throw new Error('A análise deveria ser adquirida.')
+    await ciclo.renovarLease({ idPublico: criado.idPublico, tentativa: 1, leaseId: adquirido.lease.id, agora: '2026-09-12T20:00:20.000Z', leaseExpiraEm: '2026-09-12T20:02:20.000Z' })
+
+    const resumo = await ciclo.obterResumoStatus({ idPublico: criado.idPublico, agora: '2026-09-12T20:00:31.000Z', limiteAguardandoMs: 60_000, limiteDemoradaMs: 30_000 })
+
+    expect(resumo).toMatchObject({ estado: 'processando', demorada: true })
   })
 })

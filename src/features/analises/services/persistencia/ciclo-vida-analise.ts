@@ -49,11 +49,6 @@ export interface SolicitacaoAnalise {
   criadoEm: string
 }
 
-export type ResultadoSolicitacaoAnalise =
-  | { tipo: 'criada'; solicitacao: SolicitacaoAnalise }
-  | { tipo: 'repetida'; solicitacao: SolicitacaoAnalise }
-  | { tipo: 'conflito'; solicitacao: SolicitacaoAnalise }
-
 export interface ResumoStatusAnalise {
   idPublico: string
   repositorio: DadosCriacaoSnapshotAnalise['repositorio']
@@ -161,30 +156,4 @@ export interface RepositorioCicloVidaAnalise {
     tentativaEsperada: number
     agora: string
   }): Promise<SnapshotCicloVidaAnalise | null>
-  buscarSolicitacao?(requestId: string): Promise<SolicitacaoAnalise | null>
-  criarOuReutilizarComSolicitacao?(input: DadosCriacaoSnapshotAnalise & {
-    requestId: string
-    urlNormalizada: string
-  }): Promise<{
-    snapshot: SnapshotCicloVidaAnalise
-    solicitacao: SolicitacaoAnalise
-    publicar: boolean
-    resultado: ResultadoSolicitacaoAnalise['tipo']
-  }>
-  iniciarNovaTentativaComSolicitacao?(input: {
-    requestId: string
-    idPublico: string
-    tentativaEsperada: number
-    agora: string
-  }): Promise<{
-    snapshot: SnapshotCicloVidaAnalise | null
-    solicitacao: SolicitacaoAnalise | null
-    publicar: boolean
-    resultado: ResultadoSolicitacaoAnalise['tipo'] | 'tentativa_desatualizada'
-  }>
-  obterResumoStatus?(input: {
-    idPublico: string
-    agora: string
-    limiteAguardandoMs: number
-  }): Promise<ResumoStatusAnalise | null>
 }

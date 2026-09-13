@@ -4,11 +4,11 @@ import type { IndicePersistido } from './persistencia-indice'
 import type {
   DadosCriacaoSnapshotAnalise,
   FalhaAnaliseParaRegistro,
-  RepositorioCicloVidaAnalise,
   SolicitacaoAnalise,
   ResumoStatusAnalise,
   SnapshotCicloVidaAnalise,
 } from './ciclo-vida-analise'
+import type { RepositorioCicloVidaAnaliseCompleto } from './repositorio-api-analises'
 
 export interface EstadoCicloVidaAnaliseEmMemoria {
   snapshots: Map<string, SnapshotCicloVidaAnalise>
@@ -28,7 +28,7 @@ export function criarEstadoCicloVidaAnaliseEmMemoria(): EstadoCicloVidaAnaliseEm
 
 export function criarCicloVidaAnaliseEmMemoria(
   estado = criarEstadoCicloVidaAnaliseEmMemoria(),
-): RepositorioCicloVidaAnalise {
+): RepositorioCicloVidaAnaliseCompleto {
   const { snapshots, chaves, solicitacoes, indices } = estado
 
   return {
@@ -266,9 +266,12 @@ export function criarCicloVidaAnaliseEmMemoria(
       const snapshot = snapshots.get(input.idPublico)
       if (!snapshot) return null
       const ultimaAtividade = snapshot.ultimaAtividadeEm ?? snapshot.atualizadoEm
-      const demorada = snapshot.estado === 'aguardando' &&
+      const demorada = snapshot.estado === 'processando' &&
+        snapshot.tentativaIniciadaEm !== null &&
+        Date.parse(input.agora) - Date.parse(snapshot.tentativaIniciadaEm) >= input.limiteDemoradaMs
+      const agendamentoInterrompido = snapshot.estado === 'aguardando' &&
         Date.parse(input.agora) - Date.parse(ultimaAtividade) >= input.limiteAguardandoMs
-      if (demorada) {
+      if (agendamentoInterrompido) {
         aplicarFalha(snapshot, {
           agora: input.agora,
           falha: {

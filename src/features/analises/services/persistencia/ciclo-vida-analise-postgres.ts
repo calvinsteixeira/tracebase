@@ -4,12 +4,12 @@ import type { Pool } from 'pg'
 import type {
   DetalhesFalhaAnalise,
   FalhaAnalise,
-  RepositorioCicloVidaAnalise,
   ResultadoAquisicaoProcessamento,
   ResumoStatusAnalise,
   SolicitacaoAnalise,
   SnapshotCicloVidaAnalise,
 } from './ciclo-vida-analise'
+import type { RepositorioCicloVidaAnaliseCompleto } from './repositorio-api-analises'
 
 interface LinhaSnapshotCiclo {
   id_publico: string
@@ -71,7 +71,7 @@ const selecaoSnapshot = `
   s.erro_em::text AS erro_em
 `
 
-export function criarCicloVidaAnalisePostgres(pool: Pool): RepositorioCicloVidaAnalise {
+export function criarCicloVidaAnalisePostgres(pool: Pool): RepositorioCicloVidaAnaliseCompleto {
   return {
     async criarOuReutilizar(input) {
       const cliente = await pool.connect()
@@ -505,7 +505,7 @@ export function criarCicloVidaAnalisePostgres(pool: Pool): RepositorioCicloVidaA
       const cliente = await pool.connect()
       try {
         await cliente.query('BEGIN')
-        const interrompido = await cliente.query(
+        await cliente.query(
           `UPDATE snapshots SET estado='falha', ultima_atividade_em=$2::timestamptz,
              atualizado_em=$2::timestamptz, finalizado_em=$2::timestamptz,
              erro_codigo='AGENDAMENTO_INTERROMPIDO', erro_categoria='transitoria',
@@ -524,7 +524,10 @@ export function criarCicloVidaAnalisePostgres(pool: Pool): RepositorioCicloVidaA
         )
         await cliente.query('COMMIT')
         if (!resultado.rows[0]) return null
-        return mapearResumoStatus(resultado.rows[0], Boolean(interrompido.rowCount))
+        const demorada = resultado.rows[0].estado === 'processando' &&
+          resultado.rows[0].tentativa_iniciada_em !== null &&
+          Date.parse(input.agora) - Date.parse(resultado.rows[0].tentativa_iniciada_em) >= input.limiteDemoradaMs
+        return mapearResumoStatus(resultado.rows[0], demorada)
       } catch (erro) { await cliente.query('ROLLBACK'); throw erro } finally { cliente.release() }
     },
   }

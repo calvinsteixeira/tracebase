@@ -1,30 +1,45 @@
 import {
-  ErroAnaliseRepositorio,
   analisarUrlRepositorio,
   verificarElegibilidadeRepositorio,
   obterLimitesElegibilidadeRepositorio,
 } from './criar-snapshot-repositorio'
-import { mapearErroFonteGitHub, criarFonteRepositorioGitHub } from './github/github-repositorio-fonte'
+import { criarFonteRepositorioGitHub } from './github/github-repositorio-fonte'
 import type { FonteRepositorioGitHub } from './github/github-repositorio.types'
-import type {
-  RepositorioCicloVidaAnalise,
-  ResumoStatusAnalise,
-  SolicitacaoAnalise,
-} from './persistencia/ciclo-vida-analise'
+import type { ResumoStatusAnalise, SolicitacaoAnalise } from './persistencia/ciclo-vida-analise'
+import type { RepositorioApiAnalises } from './persistencia/repositorio-api-analises'
 import type { FilaDeAnalises } from './fila-analises'
+import {
+  ErroApiAnalises,
+  mapearErroApiAnalises,
+  obterRespostaErro,
+  obterStatusErroApi,
+  type CodigoErroApiAnalise,
+} from './erros-api-analises'
 
 export const LIMITE_AGUARDANDO_SEM_ATIVIDADE_MS = 60_000
+export const LIMITE_ANALISE_DEMORADA_MS = 30_000
+
+type ResultadoPublicacao =
+  | { tipo: 'publicada'; resumo: ResumoStatusAnalise }
+  | { tipo: 'falhou'; resumo: ResumoStatusAnalise }
+  | { tipo: 'estado_avancou'; resumo: ResumoStatusAnalise }
 
 export function obterLimiteAguardandoSemAtividadeMs() {
   const valor = Number(process.env.TRACEBASE_SCHEDULE_TIMEOUT_MS)
   return Number.isInteger(valor) && valor > 0 ? valor : LIMITE_AGUARDANDO_SEM_ATIVIDADE_MS
 }
 
-interface DependenciasApiAnalises {
-  cicloVida: RepositorioCicloVidaAnalise
+export function obterLimiteAnaliseDemoradaMs() {
+  const valor = Number(process.env.TRACEBASE_SLOW_ANALYSIS_MS)
+  return Number.isInteger(valor) && valor > 0 ? valor : LIMITE_ANALISE_DEMORADA_MS
+}
+
+export interface DependenciasApiAnalises {
+  repositorio: RepositorioApiAnalises
   fila: FilaDeAnalises
   fonte?: FonteRepositorioGitHub
   limiteAguardandoMs?: number
+  limiteDemoradaMs?: number
   agora?: () => string
 }
 
@@ -32,12 +47,13 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
   const fonte = dependencias.fonte ?? criarFonteRepositorioGitHub()
   const agora = dependencias.agora ?? (() => new Date().toISOString())
   const limiteAguardandoMs = dependencias.limiteAguardandoMs ?? obterLimiteAguardandoSemAtividadeMs()
+  const limiteDemoradaMs = dependencias.limiteDemoradaMs ?? obterLimiteAnaliseDemoradaMs()
 
   return {
     async elegibilidade(request: Request) {
       try {
         const corpo = await lerObjeto(request)
-        if (typeof corpo.url !== 'string') throw new ErroAnaliseRepositorio('URL_INVALIDA', '')
+        if (typeof corpo.url !== 'string') throw new ErroApiAnalises('REQUISICAO_INVALIDA')
         return Response.json(await verificarElegibilidadeRepositorio(corpo.url, fonte, obterLimitesElegibilidadeRepositorio()))
       } catch (erro) {
         return respostaErro(erro)
@@ -49,19 +65,18 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
         const corpo = await lerObjeto(request)
         const requestId = exigirUuid(corpo.requestId)
         const url = corpo.url
-        if (typeof url !== 'string') throw new ErroAnaliseRepositorio('URL_INVALIDA', '')
+        if (typeof url !== 'string') throw new ErroApiAnalises('REQUISICAO_INVALIDA')
         const referencia = analisarUrlRepositorio(url)
         const urlNormalizada = `https://github.com/${referencia.proprietario}/${referencia.nome}`
-        const solicitacaoExistente = await dependencias.cicloVida.buscarSolicitacao?.(requestId)
+        const solicitacaoExistente = await dependencias.repositorio.buscarSolicitacao(requestId)
         if (solicitacaoExistente) {
           if (!eSolicitacaoCriacaoCompativel(solicitacaoExistente, urlNormalizada)) return respostaErroCodigo('REQUEST_ID_CONFLITO', 409)
-          return respostaSnapshot(await obterResumoObrigatorio(solicitacaoExistente.snapshotId))
+          return respostaCriacao(await obterResumoObrigatorio(solicitacaoExistente.snapshotId))
         }
 
         const elegibilidade = await verificarElegibilidadeRepositorio(url, fonte, obterLimitesElegibilidadeRepositorio())
         if (elegibilidade.status !== 'elegivel') return Response.json(elegibilidade, { status: 422 })
-        if (!dependencias.cicloVida.criarOuReutilizarComSolicitacao) throw new Error('A composição da API não possui idempotência configurada.')
-        const resultado = await dependencias.cicloVida.criarOuReutilizarComSolicitacao({
+        const resultado = await dependencias.repositorio.criarOuReutilizarComSolicitacao({
           repositorio: elegibilidade.repositorio,
           commitSha: elegibilidade.snapshot.commitSha,
           referencia: elegibilidade.snapshot.referencia,
@@ -70,8 +85,12 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
           urlNormalizada,
         })
         if (resultado.resultado === 'conflito') return respostaErroCodigo('REQUEST_ID_CONFLITO', 409)
-        if (resultado.publicar) await publicar(resultado.snapshot.idPublico, resultado.snapshot.tentativa)
-        return respostaSnapshot(await obterResumoObrigatorio(resultado.snapshot.idPublico))
+        if (resultado.publicar) {
+          const publicacao = await publicar(resultado.snapshot.idPublico, resultado.snapshot.tentativa)
+          if (publicacao.tipo === 'falhou') return respostaFalhaPublicacao(publicacao.resumo)
+          return respostaCriacao(publicacao.resumo)
+        }
+        return respostaCriacao(await obterResumoObrigatorio(resultado.snapshot.idPublico))
       } catch (erro) {
         return respostaErro(erro)
       }
@@ -80,7 +99,7 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
     async status(snapshotId: string) {
       try {
         exigirUuid(snapshotId)
-        return respostaSnapshot(await obterResumoObrigatorio(snapshotId))
+        return respostaConsulta(await obterResumoObrigatorio(snapshotId))
       } catch (erro) {
         return respostaErro(erro)
       }
@@ -93,31 +112,34 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
         const requestId = exigirUuid(corpo.requestId)
         const tentativaEsperada = corpo.tentativaEsperada
         if (typeof tentativaEsperada !== 'number' || !Number.isInteger(tentativaEsperada) || tentativaEsperada < 1) return respostaErroCodigo('REQUISICAO_INVALIDA', 400)
-        const solicitacaoExistente = await dependencias.cicloVida.buscarSolicitacao?.(requestId)
+        const solicitacaoExistente = await dependencias.repositorio.buscarSolicitacao(requestId)
         if (solicitacaoExistente) {
           if (!eSolicitacaoRetryCompativel(solicitacaoExistente, snapshotId, tentativaEsperada)) return respostaErroCodigo('REQUEST_ID_CONFLITO', 409)
-          return respostaSnapshot(await obterResumoObrigatorio(snapshotId))
+          return respostaCriacao(await obterResumoObrigatorio(snapshotId))
         }
-        if (!dependencias.cicloVida.iniciarNovaTentativaComSolicitacao) throw new Error('A composição da API não possui idempotência configurada.')
-        const resultado = await dependencias.cicloVida.iniciarNovaTentativaComSolicitacao({ requestId, idPublico: snapshotId, tentativaEsperada, agora: agora() })
+        const resultado = await dependencias.repositorio.iniciarNovaTentativaComSolicitacao({ requestId, idPublico: snapshotId, tentativaEsperada, agora: agora() })
         if (resultado.resultado === 'conflito') return respostaErroCodigo('REQUEST_ID_CONFLITO', 409)
-        if (resultado.resultado === 'tentativa_desatualizada') return respostaSnapshot(await obterResumoObrigatorio(snapshotId))
-        if (resultado.publicar && resultado.snapshot) await publicar(snapshotId, resultado.snapshot.tentativa)
-        return respostaSnapshot(await obterResumoObrigatorio(snapshotId))
+        if (resultado.resultado === 'tentativa_desatualizada') return respostaCriacao(await obterResumoObrigatorio(snapshotId))
+        if (resultado.publicar && resultado.snapshot) {
+          const publicacao = await publicar(snapshotId, resultado.snapshot.tentativa)
+          if (publicacao.tipo === 'falhou') return respostaFalhaPublicacao(publicacao.resumo)
+          return respostaCriacao(publicacao.resumo)
+        }
+        return respostaCriacao(await obterResumoObrigatorio(snapshotId))
       } catch (erro) {
         return respostaErro(erro)
       }
     },
   }
 
-  async function publicar(snapshotId: string, tentativa: number) {
+  async function publicar(snapshotId: string, tentativa: number): Promise<ResultadoPublicacao> {
     try {
       await dependencias.fila.publicar({
         mensagem: { snapshotId, tentativa },
         chaveIdempotencia: `analise:${snapshotId}:${tentativa}`,
       })
     } catch {
-      const falha = await dependencias.cicloVida.registrarFalhaAgendamento({
+      const falha = await dependencias.repositorio.registrarFalhaAgendamento({
         idPublico: snapshotId,
         tentativa,
         agora: agora(),
@@ -127,27 +149,33 @@ export function criarApiAnalises(dependencias: DependenciasApiAnalises) {
           mensagem: 'Não foi possível iniciar o processamento desta análise.',
         },
       })
-      if (falha) return
-      // Um consumidor pode ter adquirido ou concluído entre a criação e a falha de publicação.
+      if (falha) return { tipo: 'falhou', resumo: await obterResumoObrigatorio(snapshotId) }
+      const resumo = await obterResumoObrigatorio(snapshotId)
+      return { tipo: resumo.estado === 'concluido' ? 'estado_avancou' : 'publicada', resumo }
     }
+    return { tipo: 'publicada', resumo: await obterResumoObrigatorio(snapshotId) }
   }
 
   async function obterResumoObrigatorio(snapshotId: string) {
-    const resumo = await dependencias.cicloVida.obterResumoStatus?.({
+    const resumo = await dependencias.repositorio.obterResumoStatus({
       idPublico: snapshotId,
       agora: agora(),
       limiteAguardandoMs,
+      limiteDemoradaMs,
     })
-    if (!resumo) throw new ErroAnaliseRepositorio('REPOSITORIO_INDISPONIVEL', '')
+    if (!resumo) throw new ErroApiAnalises('SNAPSHOT_NAO_ENCONTRADO')
     return resumo
   }
 }
 
 function lerObjeto(request: Request): Promise<Record<string, unknown>> {
   return request.json().then((corpo: unknown) => {
-    if (!corpo || typeof corpo !== 'object' || Array.isArray(corpo)) throw new ErroAnaliseRepositorio('URL_INVALIDA', '')
+    if (!corpo || typeof corpo !== 'object' || Array.isArray(corpo)) throw new ErroApiAnalises('REQUISICAO_INVALIDA')
     return corpo as Record<string, unknown>
-  }).catch(() => { throw new ErroAnaliseRepositorio('URL_INVALIDA', '') })
+  }).catch((erro) => {
+    if (erro instanceof ErroApiAnalises) throw erro
+    throw new ErroApiAnalises('REQUISICAO_INVALIDA')
+  })
 }
 
 function exigirUuid(valor: unknown) {
@@ -156,7 +184,7 @@ function exigirUuid(valor: unknown) {
 }
 
 function respostaInvalida(): never {
-  throw new ErroAnaliseRepositorio('URL_INVALIDA', 'Requisição inválida.')
+  throw new ErroApiAnalises('REQUISICAO_INVALIDA')
 }
 
 function eSolicitacaoCriacaoCompativel(s: SolicitacaoAnalise, url: string) {
@@ -167,36 +195,30 @@ function eSolicitacaoRetryCompativel(s: SolicitacaoAnalise, snapshotId: string, 
   return s.operacao === 'retry' && s.snapshotId === snapshotId && s.tentativaEsperada === tentativa
 }
 
-function respostaSnapshot(resumo: ResumoStatusAnalise) {
-  return Response.json(resumo, { status: resumo.estado === 'concluido' ? 200 : 202 })
+function respostaConsulta(resumo: ResumoStatusAnalise) {
+  return Response.json(resumo, { status: 200 })
+}
+
+function respostaCriacao(resumo: ResumoStatusAnalise) {
+  if (resumo.estado === 'falha' && resumo.falha?.codigo === 'PUBLICACAO_RECUSADA') {
+    return respostaFalhaPublicacao(resumo)
+  }
+  return Response.json(resumo, {
+    status: resumo.estado === 'concluido' ? 200 : resumo.estado === 'falha' ? 409 : 202,
+  })
+}
+
+function respostaFalhaPublicacao(resumo: ResumoStatusAnalise) {
+  return Response.json({ ...resumo, erro: obterRespostaErro('PUBLICACAO_RECUSADA') }, {
+    status: obterStatusErroApi('PUBLICACAO_RECUSADA'),
+  })
 }
 
 function respostaErro(erro: unknown) {
-  if (erro instanceof ErroAnaliseRepositorio) return respostaErroCodigo(erro.codigo, statusErro(erro.codigo))
-  const codigo = mapearErroFonteGitHub(erro)
-  if (codigo !== 'GITHUB_INDISPONIVEL') return respostaErroCodigo(codigo, statusErro(codigo))
-  return respostaErroCodigo('ERRO_INTERNO', 500)
+  const codigo = mapearErroApiAnalises(erro)
+  return respostaErroCodigo(codigo, obterStatusErroApi(codigo))
 }
 
-function respostaErroCodigo(codigo: string, status: number) {
-  const mensagens: Record<string, string> = {
-    URL_INVALIDA: 'Informe uma URL canônica de repositório público do GitHub.',
-    REPOSITORIO_INDISPONIVEL: 'Não foi possível encontrar ou acessar esse repositório público.',
-    REPOSITORIO_PRIVADO: 'Apenas repositórios públicos são aceitos.',
-    VERIFICACAO_INCONCLUSIVA: 'Não foi possível confirmar os dados desse repositório agora.',
-    LIMITE_GITHUB: 'O GitHub não permitiu concluir a verificação agora.',
-    GITHUB_INDISPONIVEL: 'Não foi possível consultar o GitHub agora.',
-    REQUEST_ID_CONFLITO: 'O requestId já foi usado com outra operação ou entrada.',
-    REQUISICAO_INVALIDA: 'A requisição não possui os dados esperados.',
-    ERRO_INTERNO: 'Não foi possível processar a solicitação agora.',
-  }
-  return Response.json({ erro: { codigo, mensagem: mensagens[codigo] ?? mensagens.ERRO_INTERNO } }, { status })
-}
-
-function statusErro(codigo: string) {
-  if (codigo === 'URL_INVALIDA') return 400
-  if (codigo === 'VERIFICACAO_INCONCLUSIVA') return 422
-  if (codigo === 'LIMITE_GITHUB') return 429
-  if (codigo === 'REPOSITORIO_INDISPONIVEL' || codigo === 'REPOSITORIO_PRIVADO') return 404
-  return 502
+function respostaErroCodigo(codigo: CodigoErroApiAnalise, status = obterStatusErroApi(codigo)) {
+  return Response.json({ erro: obterRespostaErro(codigo) }, { status })
 }

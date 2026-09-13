@@ -2,7 +2,7 @@ import { Pool } from 'pg'
 
 import { criarConsumidorProcessamentoAnalise, criarExecutorLocalProcessamento } from './consumidor-processamento-analise'
 import { criarFonteRepositorioGitHub } from './github/github-repositorio-fonte'
-import { criarApiAnalises, obterLimiteAguardandoSemAtividadeMs } from './api-analises'
+import { criarApiAnalises, obterLimiteAguardandoSemAtividadeMs, obterLimiteAnaliseDemoradaMs } from './api-analises'
 import { criarFilaLocalAnalises } from './fila-analises'
 import { criarCicloVidaAnalisePostgres } from './persistencia/ciclo-vida-analise-postgres'
 import { criarRepositorioPersistenciaIndicePostgres } from './persistencia/persistencia-indice-postgres'
@@ -17,6 +17,12 @@ export function obterApiAnalisesServidor() {
   const fonte = criarFonteRepositorioGitHub()
   const consumidor = criarConsumidorProcessamentoAnalise({ cicloVida, persistencia, fonte })
   const fila = criarFilaLocalAnalises(criarExecutorLocalProcessamento(consumidor))
-  api = criarApiAnalises({ cicloVida, fila, fonte, limiteAguardandoMs: obterLimiteAguardandoSemAtividadeMs() })
+  api = criarApiAnalises({
+    repositorio: cicloVida,
+    fila,
+    fonte,
+    limiteAguardandoMs: obterLimiteAguardandoSemAtividadeMs(),
+    limiteDemoradaMs: obterLimiteAnaliseDemoradaMs(),
+  })
   return api
 }
