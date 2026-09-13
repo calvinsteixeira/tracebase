@@ -83,7 +83,7 @@ describe('AcompanhamentoAnalises', () => {
     await verificar(user)
     await user.click(screen.getByRole('button', { name: 'Iniciar análise' }))
 
-    expect(await screen.findByText('Não foi possível iniciar o processamento desta análise.')).toBeInTheDocument()
+    expect(await screen.findByText('Não foi possível iniciar o processamento da análise.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeInTheDocument()
     expect(JSON.parse(window.localStorage.getItem('tracebase:analises-recentes:v1') ?? '[]')).toEqual([id])
   })
@@ -146,7 +146,7 @@ describe('AcompanhamentoAnalises', () => {
     renderTela()
     await verificar(user)
     await user.click(screen.getByRole('button', { name: 'Iniciar análise' }))
-    await screen.findByText('Não foi possível consultar a fonte do repositório.')
+    await screen.findByText('Não foi possível consultar os arquivos do repositório.')
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(`/api/analises/${id}/tentativas`, expect.objectContaining({
@@ -154,6 +154,84 @@ describe('AcompanhamentoAnalises', () => {
       body: JSON.stringify({ requestId: novoRequestId, tentativaEsperada: 1 }),
     })))
     expect(await screen.findByText('Aguardando')).toBeInTheDocument()
+  })
+
+  it('preserva o card quando o retry falha, mostra o erro e permite recuperar', async () => {
+    const user = userEvent.setup()
+    let modoRetry: 'erro' | 'sucesso' = 'erro'
+    vi.stubGlobal('fetch', vi.fn((endereco: string) => {
+      if (endereco === '/api/analises/elegibilidade') return Promise.resolve(resposta(elegibilidade()))
+      if (endereco === '/api/analises') return Promise.resolve(resposta(resumo({ estado: 'falha', falha: falha() })))
+      if (endereco.includes('/tentativas')) {
+        return modoRetry === 'erro'
+          ? Promise.resolve(resposta({ erro: { codigo: 'ERRO_PERSISTENCIA', mensagem: 'stack técnico que não deve aparecer' } }, 503))
+          : Promise.resolve(resposta(resumo({ estado: 'aguardando', tentativa: 2 })))
+      }
+      return Promise.resolve(resposta(resumo({ estado: 'falha', falha: falha() })))
+    }))
+    renderTela()
+    await verificar(user)
+    await user.click(screen.getByRole('button', { name: 'Iniciar análise' }))
+    expect(await screen.findByText('Não foi possível consultar os arquivos do repositório.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+    expect(await screen.findByText(/Não foi possível iniciar uma nova tentativa/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeEnabled()
+    expect(screen.getByText('Não foi possível consultar os arquivos do repositório.')).toBeInTheDocument()
+    expect(screen.queryByText('stack técnico que não deve aparecer')).not.toBeInTheDocument()
+
+    let resolver: ((resposta: Response) => void) | undefined
+    modoRetry = 'sucesso'
+    ;(fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(() => new Promise<Response>((resolve) => { resolver = resolve }))
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+    expect(screen.getByRole('button', { name: 'Tentando novamente...' })).toBeDisabled()
+    expect(screen.queryByText(/Não foi possível iniciar uma nova tentativa/)).not.toBeInTheDocument()
+    resolver?.(resposta(resumo({ estado: 'aguardando', tentativa: 2 })))
+    expect(await screen.findByText('Aguardando')).toBeInTheDocument()
+    expect(screen.queryByText(/Não foi possível iniciar uma nova tentativa/)).not.toBeInTheDocument()
+  })
+
+  it('resolve falhas por código, usa fallback desconhecido e não renderiza mensagem técnica', () => {
+    render(
+      <NextIntlClientProvider locale="pt-BR" timeZone="America/Araguaina" messages={messages}>
+        <CartaoAcompanhamentoAnalise resumo={resumo({ estado: 'falha', falha: { ...falha(), codigo: 'TEMPO_ESGOTADO', mensagem: 'detalhe técnico' } })} />
+        <CartaoAcompanhamentoAnalise
+          resumo={resumo({ estado: 'falha', falha: { ...falha(), codigo: 'CODIGO_NOVO', mensagem: 'resposta técnica' } })}
+          erroNovaTentativa={new ErroApiAnaliseCliente('ERRO_INTERNO', 500, undefined, 'stack do servidor')}
+        />
+      </NextIntlClientProvider>,
+    )
+
+    expect(screen.getByText('O processamento excedeu o tempo permitido. Tente novamente.')).toBeInTheDocument()
+    expect(screen.getByText('Não foi possível concluir esta operação. Tente novamente.')).toBeInTheDocument()
+    expect(screen.queryByText('detalhe técnico')).not.toBeInTheDocument()
+    expect(screen.queryByText('resposta técnica')).not.toBeInTheDocument()
+    expect(screen.queryByText('CODIGO_NOVO')).not.toBeInTheDocument()
+    expect(screen.queryByText('stack do servidor')).not.toBeInTheDocument()
+  })
+
+  it('mantém erros de retry isolados por snapshot', () => {
+    const primeiro = resumo({ estado: 'falha', falha: falha() })
+    const segundo = { ...resumo({ estado: 'falha', falha: falha() }), idPublico: retryId, repositorio: { ...resumoBase().repositorio, nome: 'outro-repositorio' } }
+
+    render(
+      <NextIntlClientProvider locale="pt-BR" timeZone="America/Araguaina" messages={messages}>
+        <CartaoAcompanhamentoAnalise
+          resumo={primeiro}
+          erroNovaTentativa={new ErroApiAnaliseCliente('ERRO_PERSISTENCIA', 503)}
+        />
+        <CartaoAcompanhamentoAnalise
+          resumo={segundo}
+          erroNovaTentativa={new ErroApiAnaliseCliente('PUBLICACAO_RECUSADA', 503)}
+        />
+      </NextIntlClientProvider>,
+    )
+
+    const cartoes = screen.getAllByRole('article')
+    expect(cartoes[0]).toHaveTextContent('Não foi possível salvar o resultado da análise.')
+    expect(cartoes[0]).not.toHaveTextContent('Não foi possível iniciar o processamento da análise.')
+    expect(cartoes[1]).toHaveTextContent('Não foi possível iniciar o processamento da análise.')
+    expect(cartoes[1]).not.toHaveTextContent('Não foi possível salvar o resultado da análise.')
   })
 
   it('preserva o último resumo quando uma atualização temporária falha', () => {

@@ -128,7 +128,7 @@ export function ResultadoElegibilidade({ resultado, onIniciar, iniciando = false
       )}
 
       {erroInicio && (
-        <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        <p role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           {erroInicio}
         </p>
       )}

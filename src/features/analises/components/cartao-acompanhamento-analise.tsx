@@ -4,12 +4,14 @@ import { CheckCircle2, CircleAlert, Clock3, LoaderCircle, RefreshCw } from 'luci
 import { useFormatter, useTranslations } from 'next-intl'
 
 import type { ErroApiAnaliseCliente, ResumoStatusAnaliseCliente } from '../services/api-analises-cliente'
+import { obterChaveMensagemErro } from '../services/mensagens-erros-analise'
 
 interface CartaoAcompanhamentoAnaliseProps {
   resumo?: ResumoStatusAnaliseCliente
   carregando?: boolean
   erroAtualizacao?: ErroApiAnaliseCliente | null
   tentandoNovamente?: boolean
+  erroNovaTentativa?: ErroApiAnaliseCliente | null
   onAtualizar?: () => void
   onTentarNovamente?: (tentativa: number) => void
 }
@@ -19,6 +21,7 @@ export function CartaoAcompanhamentoAnalise({
   carregando = false,
   erroAtualizacao = null,
   tentandoNovamente = false,
+  erroNovaTentativa = null,
   onAtualizar,
   onTentarNovamente,
 }: CartaoAcompanhamentoAnaliseProps) {
@@ -84,13 +87,19 @@ export function CartaoAcompanhamentoAnalise({
       )}
 
       {resumo.falha && (
-        <div className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        <div role="alert" aria-live="assertive" className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
           <div>
             <p className="font-semibold">{t('falhaTitulo')}</p>
-            <p className="mt-1">{resumo.falha.mensagem}</p>
+            <p className="mt-1">{t(`erros.${obterChaveMensagemErro(resumo.falha.codigo)}`)}</p>
           </div>
         </div>
+      )}
+
+      {erroNovaTentativa && (
+        <p role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          {t('novaTentativaFalhou')}: {t(`erros.${obterChaveMensagemErro(erroNovaTentativa.codigo)}`)}
+        </p>
       )}
 
       {resumo.contagens && <Contagens resumo={resumo} />}
@@ -154,12 +163,12 @@ function Contagem({ label, value }: { label: string; value: number }) {
 function AvisoAtualizacao({ erro, onAtualizar }: { erro: ErroApiAnaliseCliente; onAtualizar?: () => void }) {
   const t = useTranslations('analises')
   return (
-    <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+    <div role="status" aria-live="polite" className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
       <div className="flex items-start gap-3">
         <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
         <div>
           <p>{t('falhaAtualizacao')}</p>
-          {erro.mensagem && <p className="mt-1 text-xs opacity-90">{erro.mensagem}</p>}
+          <p className="mt-1 text-xs opacity-90">{t(`erros.${obterChaveMensagemErro(erro.codigo)}`)}</p>
         </div>
       </div>
       {onAtualizar && (

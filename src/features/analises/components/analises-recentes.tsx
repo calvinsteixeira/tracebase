@@ -13,11 +13,12 @@ interface AnalisesRecentesProps {
   idAtual: string | null
   onTentarNovamente: (snapshotId: string, tentativa: number) => void
   tentandoId: string | null
+  errosRetry: Record<string, ErroApiAnaliseCliente>
   carregando: boolean
   onRemover: (ids: string[]) => void
 }
 
-export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, carregando, onRemover }: AnalisesRecentesProps) {
+export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, errosRetry, carregando, onRemover }: AnalisesRecentesProps) {
   const t = useTranslations('analises')
   const idsVisiveis = ids.filter((id) => id !== idAtual)
   const consultas = useStatusAnalises(idsVisiveis)
@@ -68,6 +69,7 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, 
                 onAtualizar={() => void consulta.refetch()}
                 onTentarNovamente={resumo ? (tentativa) => onTentarNovamente(resumo.idPublico, tentativa) : undefined}
                 tentandoNovamente={tentandoId === idsVisiveis[indice]}
+                erroNovaTentativa={errosRetry[idsVisiveis[indice]]}
               />
             )
           })}

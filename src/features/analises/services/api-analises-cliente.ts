@@ -12,6 +12,12 @@ export type CodigoErroApiAnaliseCliente =
   | 'LIMITE_GITHUB'
   | 'GITHUB_INDISPONIVEL'
   | 'PUBLICACAO_RECUSADA'
+  | 'FONTE_INDISPONIVEL'
+  | 'TEMPO_ESGOTADO'
+  | 'CONFIGURACAO_INVALIDA'
+  | 'LIMITE_REPOSITORIO'
+  | 'ERRO_PERSISTENCIA'
+  | 'AGENDAMENTO_INTERROMPIDO'
   | 'ERRO_INTERNO'
 
 export type EstadoAnaliseCliente = 'aguardando' | 'processando' | 'concluido' | 'falha'
@@ -162,6 +168,12 @@ function normalizarCodigo(codigo: string | undefined, status: number): CodigoErr
     'LIMITE_GITHUB',
     'GITHUB_INDISPONIVEL',
     'PUBLICACAO_RECUSADA',
+    'FONTE_INDISPONIVEL',
+    'TEMPO_ESGOTADO',
+    'CONFIGURACAO_INVALIDA',
+    'LIMITE_REPOSITORIO',
+    'ERRO_PERSISTENCIA',
+    'AGENDAMENTO_INTERROMPIDO',
     'ERRO_INTERNO',
   ]
 

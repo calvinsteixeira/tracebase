@@ -27,7 +27,8 @@
       "LIMITE_GITHUB": "O GitHub não permitiu concluir a verificação agora. Tente novamente mais tarde.",
       "GITHUB_INDISPONIVEL": "Não foi possível consultar o GitHub agora. Tente novamente mais tarde.",
       "PUBLICACAO_RECUSADA": "Não foi possível iniciar a análise agora. Tente novamente mais tarde.",
-      "ERRO_INTERNO": "Não foi possível processar a solicitação agora. Tente novamente."
+      "ERRO_INTERNO": "Não foi possível processar a solicitação agora. Tente novamente.",
+      "DESCONHECIDA": "Não foi possível processar a solicitação agora. Tente novamente."
     },
     "inicioFalhou": "Não foi possível iniciar a análise. Tente novamente."
   },
@@ -69,6 +70,7 @@
     "aguardandoEtapa": "Aguardando o processamento começar",
     "demorada": "Esta análise está levando mais tempo que o esperado, mas continua em andamento.",
     "falhaTitulo": "Não foi possível concluir a análise",
+    "novaTentativaFalhou": "Não foi possível iniciar uma nova tentativa",
     "falhaAtualizacao": "Não foi possível atualizar este card. O último estado conhecido foi preservado.",
     "tentarAtualizar": "Tentar atualizar",
     "tentarNovamente": "Tentar novamente",
@@ -103,6 +105,17 @@
       "processando": "A análise está sendo processada.",
       "concluido": "A análise foi concluída.",
       "falha": "A análise terminou com falha."
+    },
+    "erros": {
+      "FONTE_INDISPONIVEL": "Não foi possível consultar os arquivos do repositório.",
+      "TEMPO_ESGOTADO": "O processamento excedeu o tempo permitido. Tente novamente.",
+      "CONFIGURACAO_INVALIDA": "A configuração do projeto não pôde ser interpretada.",
+      "LIMITE_REPOSITORIO": "O repositório ultrapassou os limites atuais de análise.",
+      "ERRO_PERSISTENCIA": "Não foi possível salvar o resultado da análise.",
+      "PUBLICACAO_RECUSADA": "Não foi possível iniciar o processamento da análise.",
+      "AGENDAMENTO_INTERROMPIDO": "O processamento não chegou a começar. Tente novamente.",
+      "ERRO_INTERNO": "Ocorreu uma falha inesperada. Tente novamente.",
+      "DESCONHECIDA": "Não foi possível concluir esta operação. Tente novamente."
     }
   }
 }

@@ -11,10 +11,11 @@ interface AnaliseAtualProps {
   snapshotId: string
   onTentarNovamente: (tentativa: number) => void
   tentandoNovamente: boolean
+  erroNovaTentativa?: ErroApiAnaliseCliente | null
   onEstadoAtualizado?: (anuncio: string) => void
 }
 
-export function AnaliseAtual({ snapshotId, onTentarNovamente, tentandoNovamente, onEstadoAtualizado }: AnaliseAtualProps) {
+export function AnaliseAtual({ snapshotId, onTentarNovamente, tentandoNovamente, erroNovaTentativa, onEstadoAtualizado }: AnaliseAtualProps) {
   const t = useTranslations('analises')
   const consulta = useStatusAnalise(snapshotId)
   const erro = consulta.error instanceof ErroApiAnaliseCliente ? consulta.error : null
@@ -37,6 +38,7 @@ export function AnaliseAtual({ snapshotId, onTentarNovamente, tentandoNovamente,
         onAtualizar={() => void consulta.refetch()}
         onTentarNovamente={onTentarNovamente}
         tentandoNovamente={tentandoNovamente}
+        erroNovaTentativa={erroNovaTentativa}
       />
     </section>
   )

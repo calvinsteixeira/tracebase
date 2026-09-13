@@ -101,7 +101,7 @@ export function NovaAnaliseFormulario({ onIniciar, iniciando = false, erroInicio
         )}
 
         {mensagemErro && (
-          <p id="repositorio-url-erro" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          <p id="repositorio-url-erro" role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
             {mensagemErro}
           </p>
         )}
