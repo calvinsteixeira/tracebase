@@ -100,7 +100,11 @@ export function criarFonteRepositorioGitHub(
         })
       } catch (erro) {
         if (erro instanceof ErroFonteGitHub) {
-          throw new ErroFonteRepositorio('FONTE_INDISPONIVEL')
+          throw new ErroFonteRepositorio(
+            mapearErroFonteGitHub(erro) === 'LIMITE_GITHUB'
+              ? 'LIMITE_GITHUB'
+              : 'FONTE_INDISPONIVEL',
+          )
         }
         throw erro
       }
@@ -232,7 +236,7 @@ async function requisitar<T>(
         throw new ErroFonteGitHub('REPOSITORIO_INDISPONIVEL')
       }
 
-      if (resposta.status === 403 || resposta.status === 429) {
+      if (classificarStatusGitHub(resposta) === 'LIMITE_GITHUB') {
         throw new ErroFonteGitHub('LIMITE_GITHUB')
       }
 
@@ -353,6 +357,9 @@ async function obterArquivoGitHub({
       }
 
       if (!resposta.ok) {
+        if (classificarStatusGitHub(resposta) === 'LIMITE_GITHUB') {
+          throw new ErroFonteRepositorio('LIMITE_GITHUB')
+        }
         throw new ErroFonteRepositorio('FONTE_INDISPONIVEL')
       }
 
@@ -403,6 +410,15 @@ function criarCabecalhos(token?: string) {
     'X-GitHub-Api-Version': '2022-11-28',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   }
+}
+
+function classificarStatusGitHub(resposta: Response) {
+  if (resposta.status === 429) return 'LIMITE_GITHUB' as const
+  if (
+    resposta.status === 403 &&
+    (resposta.headers.get('x-ratelimit-remaining') === '0' || resposta.headers.has('retry-after'))
+  ) return 'LIMITE_GITHUB' as const
+  return null
 }
 
 function eRespostaBlobGitHub(corpo: unknown): corpo is RespostaBlobGitHub {

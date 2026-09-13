@@ -35,6 +35,10 @@ export function classificarFalhaAnalise(erro: unknown): FalhaAnaliseParaRegistro
       return falha('TEMPO_ESGOTADO', 'transitoria', 'A análise excedeu o tempo permitido.')
     }
 
+    if (erro.codigo === 'LIMITE_GITHUB') {
+      return falha('LIMITE_GITHUB', 'transitoria', 'O GitHub limitou temporariamente as requisições.')
+    }
+
     if (
       erro.codigo === 'QUANTIDADE_ARQUIVOS' ||
       erro.codigo === 'TAMANHO_ARQUIVO' ||

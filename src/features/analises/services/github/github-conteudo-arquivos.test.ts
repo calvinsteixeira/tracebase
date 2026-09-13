@@ -106,6 +106,10 @@ describe('conteúdo de arquivos do GitHub', () => {
       ),
     ],
     ['SHA divergente', 'SHA_BLOB_INCORRETO', respostaBlob('b'.repeat(40), 'YQ==')],
+    ['limite 429', 'LIMITE_GITHUB', new Response(null, { status: 429 })],
+    ['limite 403 pelo cabeçalho restante', 'LIMITE_GITHUB', new Response(null, { status: 403, headers: { 'x-ratelimit-remaining': '0' } })],
+    ['limite 403 pelo retry-after', 'LIMITE_GITHUB', new Response(null, { status: 403, headers: { 'retry-after': '60' } })],
+    ['403 sem evidência de limite', 'FONTE_INDISPONIVEL', new Response(null, { status: 403 })],
   ] as const)('falha quando há %s', async (_descricao, codigo, resposta) => {
     const buscar = vi.fn<typeof fetch>(async () => resposta)
     const fonte = criarFonteRepositorioGitHub({ buscar })

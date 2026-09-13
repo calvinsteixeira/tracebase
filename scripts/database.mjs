@@ -3,11 +3,10 @@ import { fileURLToPath } from 'node:url'
 import { join, resolve } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { setTimeout as esperar } from 'node:timers/promises'
+import { criarAmbienteAplicacao, obterConfiguracao } from './database-ambiente.mjs'
 const raiz = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const arquivoCompose = join(raiz, 'docker-compose.yml')
 const projetoCompose = ['compose', '-p', 'tracebase', '-f', arquivoCompose]
-const urlLocalPadrao =
-  'postgresql://tracebase:tracebase_local@localhost:5432/tracebase?sslmode=disable'
 
 function carregarAmbienteLocal() {
   const ambiente = {}
@@ -31,17 +30,6 @@ function carregarAmbienteLocal() {
   }
 
   return { ...ambiente, ...process.env }
-}
-
-function obterConfiguracao(ambiente) {
-  const url = ambiente.DATABASE_URL || urlLocalPadrao
-  const analisada = new URL(url)
-
-  return {
-    url,
-    banco: decodeURIComponent(analisada.pathname.slice(1)) || ambiente.POSTGRES_DB || 'tracebase',
-    usuario: decodeURIComponent(analisada.username) || ambiente.POSTGRES_USER || 'tracebase',
-  }
 }
 
 function garantirBancoLocal(configuracao) {
@@ -85,7 +73,7 @@ function executarCompose(argumentos, opcoes = {}) {
 
 function executarSupabase(argumentos, configuracao) {
   executar('pnpm', ['exec', 'supabase', ...argumentos], {
-    env: { ...carregarAmbienteLocal(), DATABASE_URL: configuracao.url },
+    env: criarAmbienteAplicacao(carregarAmbienteLocal(), configuracao),
   })
 }
 
@@ -143,11 +131,11 @@ async function resetarBanco(configuracao) {
   await aplicarMigrations(configuracao)
 }
 
-function iniciarAplicacao() {
+function iniciarAplicacao(configuracao) {
   const processo = spawn('pnpm', ['dev:app'], {
     cwd: raiz,
     stdio: 'inherit',
-    env: carregarAmbienteLocal(),
+    env: { ...carregarAmbienteLocal(), DATABASE_URL: configuracao.url },
   })
 
   processo.on('exit', (codigo, sinal) => {
@@ -192,7 +180,7 @@ async function main() {
     await subirPostgres(configuracao)
     await aguardarPostgres(configuracao)
     await aplicarMigrations(configuracao)
-    iniciarAplicacao()
+    iniciarAplicacao(configuracao)
     return
   }
 
@@ -204,7 +192,9 @@ async function main() {
   throw new Error('Comando desconhecido. Use up, migrate, reset, dev ou test:integration.')
 }
 
-main().catch((erro) => {
-  console.error(erro instanceof Error ? erro.message : 'Falha na operação do PostgreSQL local.')
-  process.exitCode = 1
-})
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((erro) => {
+    console.error(erro instanceof Error ? erro.message : 'Falha na operação do PostgreSQL local.')
+    process.exitCode = 1
+  })
+}

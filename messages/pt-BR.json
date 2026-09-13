@@ -13,15 +13,10 @@
     "verificar": "Verificar repositório",
     "verificando": "Verificando repositório...",
     "carregando": "O Tracebase está verificando o repositório público no GitHub.",
+    "iniciar": "Iniciar análise",
+    "iniciando": "Iniciando análise...",
     "novo": "Verificar outro repositório",
-    "erros": {
-      "URL_INVALIDA": "Informe uma URL canônica de repositório público do GitHub.",
-      "REPOSITORIO_INDISPONIVEL": "Não foi possível encontrar ou acessar esse repositório público.",
-      "REPOSITORIO_PRIVADO": "Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.",
-      "VERIFICACAO_INCONCLUSIVA": "Não foi possível confirmar os dados desse repositório agora.",
-      "LIMITE_GITHUB": "O GitHub não permitiu concluir a verificação agora. Tente novamente mais tarde.",
-      "GITHUB_INDISPONIVEL": "Não foi possível consultar o GitHub agora. Tente novamente mais tarde."
-    }
+    "inicioFalhou": "Não foi possível iniciar a análise. Tente novamente."
   },
   "elegibilidade": {
     "status": {
@@ -42,6 +37,80 @@
       "tamanhoArquivo": "O arquivo {caminho} tem {encontrado}; o limite por arquivo é {maximo}.",
       "tamanhoTotal": "Foram encontrados {encontrado} de código elegível; o limite total é {maximo}.",
       "tamanhoDesconhecido": "Não foi possível confirmar o tamanho de todos os arquivos elegíveis. O limite total é {maximo}."
+    },
+    "iniciar": "Iniciar análise",
+    "iniciando": "Iniciando análise..."
+  },
+  "analises": {
+    "acompanhamento": "Acompanhamento",
+    "analiseAtual": "Análise atual",
+    "analise": "Análise de repositório",
+    "carregando": "Carregando análise",
+    "consultando": "Consultando o estado mais recente.",
+    "branch": "Branch considerada",
+    "commit": "Commit analisado",
+    "commitCompleto": "Commit completo: {commit}",
+    "tentativa": "Tentativa",
+    "atualizadoEm": "Última atualização",
+    "etapa": "Etapa atual",
+    "aguardandoEtapa": "Aguardando o processamento começar",
+    "demorada": "Esta análise está levando mais tempo que o esperado, mas continua em andamento.",
+    "falhaTitulo": "Não foi possível concluir a análise",
+    "novaTentativaFalhou": "Não foi possível iniciar uma nova tentativa",
+    "falhaAtualizacao": "Não foi possível atualizar este card. O último estado conhecido foi preservado.",
+    "tentarAtualizar": "Tentar atualizar",
+    "tentarNovamente": "Tentar novamente",
+    "tentandoNovamente": "Tentando novamente...",
+    "estados": {
+      "aguardando": "Aguardando",
+      "processando": "Processando",
+      "concluido": "Concluída",
+      "falha": "Falha"
+    },
+    "etapas": {
+      "preparacao": "Preparação",
+      "obtencao_arquivos": "Obtendo arquivos",
+      "indexacao": "Indexação",
+      "persistencia": "Salvando resultado"
+    },
+    "recentes": {
+      "titulo": "Análises recentes neste navegador",
+      "vazia": "Nenhuma análise recente neste navegador.",
+      "carregando": "Carregando análises recentes..."
+    },
+    "contagens": {
+      "titulo": "Resumo encontrado",
+      "arquivos": "Arquivos",
+      "simbolos": "Símbolos",
+      "exportacoes": "Exports",
+      "relacoes": "Relações",
+      "diagnosticos": "Diagnósticos"
+    },
+    "anuncio": {
+      "aguardando": "A análise está aguardando processamento.",
+      "processando": "A análise está sendo processada.",
+      "concluido": "A análise foi concluída.",
+      "falha": "A análise terminou com falha."
     }
+  },
+  "erros": {
+    "URL_INVALIDA": "Informe uma URL canônica de repositório público do GitHub.",
+    "REQUISICAO_INVALIDA": "Revise os dados informados e tente novamente.",
+    "REQUEST_ID_CONFLITO": "Esta solicitação já foi usada com outros dados. Tente novamente.",
+    "SNAPSHOT_NAO_ENCONTRADO": "A análise não foi encontrada.",
+    "REPOSITORIO_INDISPONIVEL": "Não foi possível encontrar ou acessar esse repositório público.",
+    "REPOSITORIO_PRIVADO": "Não foi possível acessar esse repositório. Apenas repositórios públicos são aceitos.",
+    "VERIFICACAO_INCONCLUSIVA": "Não foi possível confirmar os dados desse repositório agora.",
+    "LIMITE_GITHUB": "O GitHub não permitiu concluir a verificação agora. Tente novamente mais tarde.",
+    "GITHUB_INDISPONIVEL": "Não foi possível consultar o GitHub agora. Tente novamente mais tarde.",
+    "FONTE_INDISPONIVEL": "Não foi possível consultar os arquivos do repositório.",
+    "TEMPO_ESGOTADO": "O processamento excedeu o tempo permitido. Tente novamente.",
+    "CONFIGURACAO_INVALIDA": "A configuração do projeto não pôde ser interpretada.",
+    "LIMITE_REPOSITORIO": "O repositório ultrapassou os limites atuais de análise.",
+    "ERRO_PERSISTENCIA": "Não foi possível salvar o resultado da análise.",
+    "PUBLICACAO_RECUSADA": "Não foi possível iniciar o processamento da análise.",
+    "AGENDAMENTO_INTERROMPIDO": "O processamento não chegou a começar. Tente novamente.",
+    "ERRO_INTERNO": "Ocorreu uma falha inesperada. Tente novamente.",
+    "DESCONHECIDA": "Não foi possível concluir esta operação. Tente novamente."
   }
 }

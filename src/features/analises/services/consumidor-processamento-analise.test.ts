@@ -345,6 +345,7 @@ describe('consumidor de processamento de análise', () => {
   it.each([
     ['fonte indisponível', new ErroFonteRepositorio('FONTE_INDISPONIVEL'), 'FONTE_INDISPONIVEL', 'transitoria'],
     ['timeout da fonte', new ErroFonteRepositorio('TEMPO_ESGOTADO'), 'TEMPO_ESGOTADO', 'transitoria'],
+    ['limite do GitHub', new ErroFonteRepositorio('LIMITE_GITHUB'), 'LIMITE_GITHUB', 'transitoria'],
   ] as const)('não atribui falha temporária da configuração ao projeto (%s)', async (_nome, erro, codigo, categoria) => {
     const ambiente = await criarAmbiente()
     configurarFonteComTsconfig(ambiente)

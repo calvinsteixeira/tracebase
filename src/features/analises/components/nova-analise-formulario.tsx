@@ -4,42 +4,35 @@ import { useMutation } from '@tanstack/react-query'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useState } from 'react'
 
-import type {
-  CodigoErroAnalise,
-  ResultadoElegibilidadeRepositorio,
-} from '../services/criar-snapshot-repositorio'
+import type { CodigoErroApiAnaliseCliente } from '../services/api-analises-cliente'
+import { ErroApiAnaliseCliente, verificarElegibilidade } from '../services/api-analises-cliente'
+import type { ResultadoElegibilidadeRepositorio } from '../services/criar-snapshot-repositorio'
 import { LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO } from '../services/politica-elegibilidade-repositorio'
-import { analisarUrlRepositorio } from '../services/validar-url-repositorio'
 import { ResultadoElegibilidade } from './resumo-repositorio'
 
-interface ErroRespostaApi {
-  erro?: {
-    codigo?: CodigoErroAnalise
-  }
+interface NovaAnaliseFormularioProps {
+  onIniciar?: (url: string) => void
+  iniciando?: boolean
+  erroInicio?: string | null
 }
 
-class ErroAnaliseClient extends Error {
-  constructor(readonly codigo: CodigoErroAnalise) {
-    super(codigo)
-  }
-}
-
-export function NovaAnaliseFormulario() {
+export function NovaAnaliseFormulario({ onIniciar, iniciando = false, erroInicio = null }: NovaAnaliseFormularioProps = {}) {
   const t = useTranslations('home')
+  const tErros = useTranslations('erros')
   const formatador = useFormatter()
   const [url, setUrl] = useState('')
-  const [erroCodigo, setErroCodigo] = useState<CodigoErroAnalise | null>(null)
+  const [erroCodigo, setErroCodigo] = useState<CodigoErroApiAnaliseCliente | null>(null)
   const [resultado, setResultado] = useState<ResultadoElegibilidadeRepositorio | null>(null)
   const mutation = useMutation({
-    mutationFn: verificarRepositorio,
+    mutationFn: verificarElegibilidade,
     onSuccess: (novoResumo) => {
       setErroCodigo(null)
       setResultado(novoResumo)
     },
-    onError: (erro: ErroAnaliseClient) => setErroCodigo(erro.codigo),
+    onError: (erro: ErroApiAnaliseCliente) => setErroCodigo(erro.codigo),
   })
 
-  const mensagemErro = erroCodigo ? t(`erros.${erroCodigo}`) : null
+  const mensagemErro = erroCodigo ? tErros(erroCodigo) : null
 
   function enviarFormulario(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -74,7 +67,8 @@ export function NovaAnaliseFormulario() {
             value={url}
             onChange={(event) => alterarUrl(event.target.value)}
             placeholder={t('urlPlaceholder')}
-            aria-describedby="repositorio-orientacao"
+            aria-invalid={Boolean(mensagemErro)}
+            aria-describedby={`repositorio-orientacao${mensagemErro ? ' repositorio-url-erro' : ''}`}
             className="flex h-12 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
           />
           <p id="repositorio-orientacao" className="text-sm text-muted-foreground">
@@ -102,54 +96,26 @@ export function NovaAnaliseFormulario() {
         </button>
 
         {mutation.isPending && (
-          <p role="status" aria-live="polite" className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-sm text-muted-foreground">
             {t('carregando')}
           </p>
         )}
 
         {mensagemErro && (
-          <p role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          <p id="repositorio-url-erro" role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
             {mensagemErro}
           </p>
         )}
       </form>
 
-      {resultado && <ResultadoElegibilidade resultado={resultado} />}
+      {resultado && (
+        <ResultadoElegibilidade
+          resultado={resultado}
+          onIniciar={onIniciar ? () => onIniciar(resultado.repositorio.url) : undefined}
+          iniciando={iniciando}
+          erroInicio={erroInicio}
+        />
+      )}
     </section>
   )
-}
-
-async function verificarRepositorio(url: string): Promise<ResultadoElegibilidadeRepositorio> {
-  try {
-    analisarUrlRepositorio(url)
-  } catch (erro) {
-    if (erro instanceof Error && 'codigo' in erro) {
-      throw new ErroAnaliseClient(erro.codigo as CodigoErroAnalise)
-    }
-
-    throw new ErroAnaliseClient('URL_INVALIDA')
-  }
-
-  try {
-    const resposta = await fetch('/api/analises/elegibilidade', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: url.trim() }),
-    })
-    const corpo = (await resposta.json()) as ResultadoElegibilidadeRepositorio | ErroRespostaApi
-
-    if (!resposta.ok) {
-      const codigo = 'erro' in corpo ? corpo.erro?.codigo : undefined
-
-      throw new ErroAnaliseClient(codigo ?? 'GITHUB_INDISPONIVEL')
-    }
-
-    return corpo as ResultadoElegibilidadeRepositorio
-  } catch (erro) {
-    if (erro instanceof ErroAnaliseClient) {
-      throw erro
-    }
-
-    throw new ErroAnaliseClient('GITHUB_INDISPONIVEL')
-  }
 }

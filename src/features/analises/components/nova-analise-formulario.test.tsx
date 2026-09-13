@@ -51,7 +51,7 @@ describe('NovaAnaliseFormulario', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Repositório elegível para análise')
+    expect(screen.getByText('Repositório elegível para análise')).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'dono/repositorio' })).toBeInTheDocument()
     expect(screen.getByText('main')).toBeInTheDocument()
     expect(screen.getByText('Commit considerado na branch padrão')).toBeInTheDocument()
@@ -89,9 +89,9 @@ describe('NovaAnaliseFormulario', () => {
     await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), 'https://gitlab.com/dono/repositorio')
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    expect(await screen.findByText(
       'Informe uma URL canônica de repositório público do GitHub.',
-    )
+    )).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -127,9 +127,7 @@ describe('NovaAnaliseFormulario', () => {
     await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), 'https://github.com/dono/repositorio')
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(screen.getAllByRole('status')[0]).toHaveTextContent(
-      'Repositório não elegível para análise',
-    )
+    expect(screen.getByText('Repositório não elegível para análise')).toBeInTheDocument()
     expect(screen.getByText('Nenhum arquivo JavaScript ou TypeScript elegível foi encontrado.')).toBeInTheDocument()
   })
 
@@ -167,9 +165,7 @@ describe('NovaAnaliseFormulario', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
-    expect(screen.getAllByRole('status')[0]).toHaveTextContent(
-      'Repositório não elegível para análise',
-    )
+    expect(screen.getByText('Repositório não elegível para análise')).toBeInTheDocument()
     expect(screen.getByText('251 de até 250 arquivos')).toBeInTheDocument()
     expect(
       screen.getByText(
@@ -196,7 +192,7 @@ describe('NovaAnaliseFormulario', () => {
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
 
     expect(screen.getByRole('button', { name: 'Verificando repositório...' })).toBeDisabled()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByText('O Tracebase está verificando o repositório público no GitHub.')).toBeInTheDocument()
 
     resolver(
       new Response(
