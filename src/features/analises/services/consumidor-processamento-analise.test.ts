@@ -464,7 +464,9 @@ describe('consumidor de processamento de análise', () => {
 async function criarAmbiente(criarSnapshot = true) {
   const estado = criarEstadoCicloVidaAnaliseEmMemoria()
   const cicloVida = criarCicloVidaAnaliseEmMemoria(estado)
-  const persistencia = criarRepositorioPersistenciaIndiceEmMemoria(estado)
+  const persistencia = criarRepositorioPersistenciaIndiceEmMemoria(estado, {
+    agora: () => agoraInicial,
+  })
   const arvore: ArquivoArvoreRepositorio[] = [
     { caminho: 'README.md', sha: 'c'.repeat(40), tamanhoBytes: 10 },
     { caminho: 'src/index.ts', sha: 'b'.repeat(40), tamanhoBytes: 28 },

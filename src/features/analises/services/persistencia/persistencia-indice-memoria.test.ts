@@ -94,6 +94,26 @@ describe('persistência do índice em memória', () => {
     ).resolves.toMatchObject({ tipo: 'ja_concluido' })
   })
 
+  it('consulta o relógio injetado no momento final e não salva após o prazo', async () => {
+    let momentoAtual = Date.parse(agora)
+    const segundoPreparado = await preparar(() => new Date(momentoAtual).toISOString())
+    const segundaEntrada = criarEntrada(segundoPreparado.snapshot, segundoPreparado.leaseId)
+    momentoAtual = Date.parse(segundaEntrada.prazoExpiraEm) + 1
+
+    await expect(segundoPreparado.persistencia.salvarEConcluir(segundaEntrada)).resolves.toEqual({
+      tipo: 'prazo_expirado',
+    })
+    expect(segundoPreparado.estado.indices.has(segundoPreparado.snapshot.idPublico)).toBe(false)
+    await expect(
+      segundoPreparado.ciclo.buscarPorIdPublico(segundoPreparado.snapshot.idPublico),
+    ).resolves.toMatchObject({ estado: 'processando' })
+    await expect(
+      segundoPreparado.persistencia.buscarPorSnapshotConcluido(
+        segundoPreparado.snapshot.idPublico,
+      ),
+    ).resolves.toBeNull()
+  })
+
   it('não reutiliza índice de outro commit e mantém fatos isolados', async () => {
     const estado = criarEstadoCicloVidaAnaliseEmMemoria()
     const ciclo = criarCicloVidaAnaliseEmMemoria(estado)
@@ -320,10 +340,10 @@ const dadosBase = {
   agora,
 }
 
-async function preparar() {
+async function preparar(agoraAtual: () => string = () => agora) {
   const estado = criarEstadoCicloVidaAnaliseEmMemoria()
   const ciclo = criarCicloVidaAnaliseEmMemoria(estado)
-  const persistencia = criarRepositorioPersistenciaIndiceEmMemoria(estado)
+  const persistencia = criarRepositorioPersistenciaIndiceEmMemoria(estado, { agora: agoraAtual })
   const criado = await ciclo.criarOuReutilizar(dadosBase)
   const adquirido = await ciclo.adquirirProcessamento({
     idPublico: criado.idPublico,

@@ -111,7 +111,6 @@ describe('consumidor de processamento PostgreSQL', () => {
   })
 
   it('faz timeout durante a persistência gerar somente falha e rollback no PostgreSQL', async () => {
-    vi.useFakeTimers()
     let sinalizarPersistenciaIniciada!: () => void
     const persistenciaIniciada = new Promise<void>((resolve) => {
       sinalizarPersistenciaIniciada = resolve
@@ -127,8 +126,10 @@ describe('consumidor de processamento PostgreSQL', () => {
     )
     const cicloBloqueado = criarCicloVidaAnalisePostgres(poolBloqueado)
     const persistenciaBloqueadaPorPrazo = criarRepositorioPersistenciaIndicePostgres(poolBloqueado)
-    const base = Date.now() - 1_000
+    const relogioBancoInicial = await obterRelogioBanco()
+    const base = Date.parse(relogioBancoInicial)
     const agora = new Date(base).toISOString()
+    const prazoExpiraEm = new Date(base + 500).toISOString()
     const snapshot = await cicloBloqueado.criarOuReutilizar({
       repositorio: { ...repositorio, url: `${url}/timeout-persistencia` },
       commitSha: '9'.repeat(40),
@@ -142,13 +143,18 @@ describe('consumidor de processamento PostgreSQL', () => {
       fonte,
       relogio: { agora: () => agora },
       temporizador: criarTemporizadorIntegracao(),
-      duracaoMaximaMs: 100,
+      duracaoMaximaMs: 500,
     })
 
     try {
       const processamento = consumidor.processar(mensagem(snapshot.idPublico, snapshot.tentativa))
       await persistenciaIniciada
-      await vi.advanceTimersByTimeAsync(100)
+      const relogioBancoDurantePersistencia = await obterRelogioBanco()
+      expect(Date.parse(relogioBancoDurantePersistencia)).toBeLessThan(Date.parse(prazoExpiraEm))
+
+      await new Promise((resolve) => setTimeout(resolve, 750))
+      const relogioBancoAposPrazo = await obterRelogioBanco()
+      expect(Date.parse(relogioBancoAposPrazo)).toBeGreaterThanOrEqual(Date.parse(prazoExpiraEm))
       liberarPersistencia()
 
       await expect(processamento).resolves.toMatchObject({
@@ -171,7 +177,6 @@ describe('consumidor de processamento PostgreSQL', () => {
       expect(fatos.rows[0]?.total).toBe('0')
     } finally {
       liberarPersistencia()
-      vi.useRealTimers()
     }
   })
 })
@@ -237,4 +242,13 @@ function criarTemporizadorIntegracao(): TemporizadorProcessamentoAnalise {
     setInterval: (callback, atraso) => setInterval(callback, atraso),
     clearInterval: (id) => clearInterval(id as ReturnType<typeof setInterval>),
   }
+}
+
+async function obterRelogioBanco() {
+  const resultado = await pool.query<{ agora: string }>(
+    `SELECT clock_timestamp()::text AS agora`,
+  )
+  const agora = resultado.rows[0]?.agora
+  if (!agora) throw new Error('O PostgreSQL não retornou o relógio do teste.')
+  return agora
 }

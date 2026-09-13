@@ -8,9 +8,16 @@ import {
 } from './persistencia-indice'
 import type { EstadoCicloVidaAnaliseEmMemoria } from './ciclo-vida-analise-memoria'
 
+export interface OpcoesPersistenciaIndiceEmMemoria {
+  agora?: () => string
+}
+
 export function criarRepositorioPersistenciaIndiceEmMemoria(
   estado: EstadoCicloVidaAnaliseEmMemoria,
+  opcoes: OpcoesPersistenciaIndiceEmMemoria = {},
 ): RepositorioPersistenciaIndice {
+  const agoraAtual = opcoes.agora ?? (() => new Date().toISOString())
+
   return {
     async salvarEConcluir(input) {
       validarEntradaPersistenciaIndice(input)
@@ -32,7 +39,8 @@ export function criarRepositorioPersistenciaIndiceEmMemoria(
         return { tipo: 'estado_incompativel' }
       }
       if (!leaseValido(snapshot, input)) return { tipo: 'lease_invalido' }
-      if (Date.parse(input.agora) >= Date.parse(input.prazoExpiraEm)) {
+      const momentoConclusao = agoraAtual()
+      if (Date.parse(momentoConclusao) >= Date.parse(input.prazoExpiraEm)) {
         return { tipo: 'prazo_expirado' }
       }
 
