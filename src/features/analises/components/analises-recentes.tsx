@@ -13,17 +13,25 @@ interface AnalisesRecentesProps {
   ids: string[]
   idAtual: string | null
   onTentarNovamente: (snapshotId: string, tentativa: number) => void
-  tentandoId: string | null
+  tentandoIds: Set<string>
   errosRetry: Record<string, ErroApiAnaliseCliente>
   carregando: boolean
   onRemover: (ids: string[]) => void
   onAnuncio?: (anuncio: string) => void
 }
 
-export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, errosRetry, carregando, onRemover, onAnuncio }: AnalisesRecentesProps) {
+type EventoAcessibilidade = {
+  chave: string
+  mensagem: string
+  tipo: 'atualizacao' | 'falha'
+  snapshotId: string
+}
+
+export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoIds, errosRetry, carregando, onRemover, onAnuncio }: AnalisesRecentesProps) {
   const t = useTranslations('analises')
   const tErros = useTranslations('erros')
   const eventosAnunciados = useRef(new Set<string>())
+  const errosAtualizacaoAtivos = useRef(new Map<string, string>())
   const baselineInicializado = useRef(false)
   const idsVisiveis = ids.filter((id) => id !== idAtual)
   const consultas = useStatusAnalises(idsVisiveis)
@@ -44,13 +52,14 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, 
   }, [consultas, idsVisiveis, onRemover])
 
   useEffect(() => {
-    const eventos = consultas.flatMap((consulta, indice) => {
+    const eventos = consultas.flatMap<EventoAcessibilidade>((consulta, indice) => {
       const snapshotId = idsVisiveis[indice]
       if (consulta.error instanceof ErroApiAnaliseCliente) {
-        return [{ chave: `${snapshotId}:atualizacao:${consulta.error.codigo}`, mensagem: `${t('falhaAtualizacao')} ${tErros(obterChaveMensagemErro(consulta.error.codigo))}` }]
+        return [{ chave: `${snapshotId}:atualizacao:${consulta.error.codigo}`, mensagem: `${t('falhaAtualizacao')} ${tErros(obterChaveMensagemErro(consulta.error.codigo))}`, tipo: 'atualizacao', snapshotId }]
       }
       if (consulta.data?.estado === 'falha' && consulta.data.falha) {
-        return [{ chave: `${snapshotId}:falha:${consulta.data.falha.codigo}`, mensagem: `${t('anuncio.falha')} ${tErros(obterChaveMensagemErro(consulta.data.falha.codigo))}` }]
+        const { codigo, ocorridoEm } = consulta.data.falha
+        return [{ chave: `${snapshotId}:falha:${consulta.data.tentativa}:${codigo}:${ocorridoEm ?? ''}`, mensagem: `${t('anuncio.falha')} ${tErros(obterChaveMensagemErro(codigo))}`, tipo: 'falha', snapshotId }]
       }
       return []
     })
@@ -58,12 +67,24 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, 
     if (carregando || consultas.some((consulta) => consulta.isPending)) return
 
     if (!baselineInicializado.current) {
-      for (const evento of eventos) eventosAnunciados.current.add(evento.chave)
+      for (const evento of eventos) {
+        eventosAnunciados.current.add(evento.chave)
+        if (evento.tipo === 'atualizacao') errosAtualizacaoAtivos.current.set(evento.snapshotId, evento.chave)
+      }
       baselineInicializado.current = true
       return
     }
 
+    const snapshotsComErro = new Set(eventos.filter((evento) => evento.tipo === 'atualizacao').map((evento) => evento.snapshotId))
+    for (const snapshotId of errosAtualizacaoAtivos.current.keys()) {
+      if (!snapshotsComErro.has(snapshotId)) errosAtualizacaoAtivos.current.delete(snapshotId)
+    }
+
     for (const evento of eventos) {
+      if (evento.tipo === 'atualizacao' && errosAtualizacaoAtivos.current.get(evento.snapshotId) !== evento.chave) {
+        errosAtualizacaoAtivos.current.set(evento.snapshotId, evento.chave)
+        eventosAnunciados.current.delete(evento.chave)
+      }
       if (!eventosAnunciados.current.has(evento.chave)) {
         onAnuncio?.(evento.mensagem)
         eventosAnunciados.current.add(evento.chave)
@@ -101,7 +122,7 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoId, 
                 erroAtualizacao={erro}
                 onAtualizar={() => void consulta.refetch()}
                 onTentarNovamente={resumo ? (tentativa) => onTentarNovamente(resumo.idPublico, tentativa) : undefined}
-                tentandoNovamente={tentandoId === idsVisiveis[indice]}
+                tentandoNovamente={tentandoIds.has(idsVisiveis[indice])}
                 erroNovaTentativa={errosRetry[idsVisiveis[indice]]}
               />
             )

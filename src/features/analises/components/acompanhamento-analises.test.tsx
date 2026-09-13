@@ -287,6 +287,34 @@ describe('AcompanhamentoAnalises', () => {
     expect(await screen.findByRole('button', { name: 'Tentar novamente' })).toBeEnabled()
   })
 
+  it('mantém retries simultâneos isolados por snapshot e aceita conclusões fora de ordem', async () => {
+    const user = userEvent.setup()
+    const resolvers = new Map<string, (resposta: Response) => void>()
+    window.localStorage.setItem('tracebase:analises-recentes:v1', JSON.stringify([id, retryId]))
+    vi.stubGlobal('fetch', vi.fn((endereco: string) => {
+      const snapshotId = endereco.includes(`/${id}/tentativas`) || endereco.endsWith(`/${id}`) ? id : retryId
+      if (endereco.includes('/tentativas')) {
+        return new Promise<Response>((resolve) => resolvers.set(snapshotId, resolve))
+      }
+      return Promise.resolve(resposta({ ...resumo({ estado: 'falha', falha: falha() }), idPublico: snapshotId }))
+    }))
+
+    renderTela()
+    const cartoes = await screen.findAllByRole('article')
+    await user.click(within(cartoes[0]).getByRole('button', { name: 'Tentar novamente' }))
+    await user.click(within(cartoes[1]).getByRole('button', { name: 'Tentar novamente' }))
+
+    await waitFor(() => expect(resolvers.size).toBe(2))
+    expect(screen.getAllByRole('button', { name: 'Tentando novamente...' })).toHaveLength(2)
+
+    resolvers.get(id)?.(resposta({ ...resumo({ estado: 'aguardando', tentativa: 2 }), idPublico: id }))
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Tentando novamente...' })).toHaveLength(1))
+    expect(screen.getByRole('button', { name: 'Tentando novamente...' })).toBeDisabled()
+
+    resolvers.get(retryId)?.(resposta({ ...resumo({ estado: 'aguardando', tentativa: 2 }), idPublico: retryId }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Tentando novamente...' })).not.toBeInTheDocument())
+  })
+
   it('preserva o último resumo quando uma atualização temporária falha', () => {
     render(
       <NextIntlClientProvider locale="pt-BR" timeZone="America/Araguaina" messages={messages}>

@@ -26,7 +26,7 @@ export function AcompanhamentoAnalises() {
   const [idsRecentes, setIdsRecentes] = useState<string[] | null>(null)
   const [idAtual, setIdAtual] = useState<string | null>(null)
   const [erroInicio, setErroInicio] = useState<string | null>(null)
-  const [tentandoId, setTentandoId] = useState<string | null>(null)
+  const [tentandoIds, setTentandoIds] = useState<Set<string>>(() => new Set())
   const [errosRetry, setErrosRetry] = useState<Record<string, ErroApiAnaliseCliente>>({})
   const [anuncio, setAnuncio] = useState('')
 
@@ -49,7 +49,7 @@ export function AcompanhamentoAnalises() {
   const retry = useMutation({
     mutationFn: ({ snapshotId, tentativa }: { snapshotId: string; tentativa: number }) => tentarNovamente(snapshotId, tentativa),
     onMutate: ({ snapshotId }) => {
-      setTentandoId(snapshotId)
+      setTentandoIds((atuais) => new Set(atuais).add(snapshotId))
       setErrosRetry((atuais) => removerErroRetry(atuais, snapshotId))
     },
     onSuccess: (resumo, { snapshotId }) => {
@@ -60,7 +60,9 @@ export function AcompanhamentoAnalises() {
       if (erro.resumo) guardarResumo(erro.resumo)
       setErrosRetry((atuais) => ({ ...atuais, [snapshotId]: erro }))
     },
-    onSettled: () => setTentandoId(null),
+    onSettled: (_data, _error, { snapshotId }) => {
+      setTentandoIds((atuais) => removerId(atuais, snapshotId))
+    },
   })
 
   function guardarResumo(resumo: ResumoStatusAnaliseCliente) {
@@ -86,7 +88,7 @@ export function AcompanhamentoAnalises() {
         <AnaliseAtual
           snapshotId={idAtual}
           onTentarNovamente={(tentativa) => retry.mutate({ snapshotId: idAtual, tentativa })}
-          tentandoNovamente={tentandoId === idAtual}
+          tentandoNovamente={tentandoIds.has(idAtual)}
           erroNovaTentativa={errosRetry[idAtual]}
           onAnuncio={setAnuncio}
         />
@@ -96,7 +98,7 @@ export function AcompanhamentoAnalises() {
         ids={idsRecentes ?? []}
         idAtual={idAtual}
         onTentarNovamente={(snapshotId, tentativa) => retry.mutate({ snapshotId, tentativa })}
-        tentandoId={tentandoId}
+        tentandoIds={tentandoIds}
         errosRetry={errosRetry}
         carregando={idsRecentes === null}
         onAnuncio={setAnuncio}
@@ -113,5 +115,11 @@ export function AcompanhamentoAnalises() {
 function removerErroRetry(erros: Record<string, ErroApiAnaliseCliente>, snapshotId: string) {
   const restantes = { ...erros }
   delete restantes[snapshotId]
+  return restantes
+}
+
+function removerId(ids: Set<string>, id: string) {
+  const restantes = new Set(ids)
+  restantes.delete(id)
   return restantes
 }
