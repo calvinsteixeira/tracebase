@@ -78,7 +78,7 @@ export async function indexarSnapshotRepositorio({
     }))
 
   if (arquivosConfiguracao.length > 0 && !fonte.obterConfiguracao) {
-    throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+    throw new ErroFonteRepositorio('ERRO_INTERNO')
   }
 
   let configuracao: ConfiguracaoProjeto | undefined
@@ -91,19 +91,13 @@ export async function indexarSnapshotRepositorio({
         arquivos: arquivosConfiguracao,
       })
     } catch (erro) {
-      if (
-        erro instanceof ErroFonteRepositorio &&
-        erro.codigo === 'CONFIGURACAO_TAMANHO'
-      ) {
-        throw erro
-      }
-
-      throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+      if (erro instanceof ErroFonteRepositorio) throw erro
+      throw new ErroFonteRepositorio('ERRO_INTERNO')
     }
   }
 
   if (arquivosConfiguracao.length > 0 && !configuracao) {
-    throw new ErroFonteRepositorio('CONFIGURACAO_INDISPONIVEL')
+    throw new ErroFonteRepositorio('ERRO_INTERNO')
   }
 
   if (

@@ -222,7 +222,7 @@ describe('consumidor de processamento de análise', () => {
     await expect(novo.processar(ambiente.mensagem)).resolves.toMatchObject({ tipo: 'concluido' })
 
     liberar()
-    await expect(processamentoAntigo).resolves.toEqual({ tipo: 'lease_perdido' })
+    await expect(processamentoAntigo).resolves.toMatchObject({ tipo: 'concluido' })
     expect((await ambiente.cicloVida.buscarPorIdPublico(ambiente.snapshotId))?.estado).toBe('concluido')
   })
 
@@ -260,6 +260,66 @@ describe('consumidor de processamento de análise', () => {
     ).resolves.toBeNull()
   })
 
+  it('confirma a conclusão quando ela vence a corrida contra o registro da falha', async () => {
+    const ambiente = await criarAmbiente()
+    const timers = criarTimers()
+    let liberarPersistencia!: () => void
+    const persistenciaBloqueada = new Promise<void>((resolve) => {
+      liberarPersistencia = resolve
+    })
+    let liberarFalha!: () => void
+    const falhaBloqueada = new Promise<void>((resolve) => {
+      liberarFalha = resolve
+    })
+    let falhaSolicitada!: () => void
+    const falhaSolicitadaPromise = new Promise<void>((resolve) => {
+      falhaSolicitada = resolve
+    })
+    const cicloVida = {
+      ...ambiente.cicloVida,
+      registrarFalhaProcessamento: vi.fn(async (
+        input: Parameters<typeof ambiente.cicloVida.registrarFalhaProcessamento>[0],
+      ) => {
+        falhaSolicitada()
+        await falhaBloqueada
+        return ambiente.cicloVida.registrarFalhaProcessamento(input)
+      }),
+    }
+    const persistencia = {
+      ...ambiente.persistencia,
+      salvarEConcluir: vi.fn(async (
+        input: Parameters<typeof ambiente.persistencia.salvarEConcluir>[0],
+      ) => {
+        await persistenciaBloqueada
+        return ambiente.persistencia.salvarEConcluir(input)
+      }),
+    }
+    const consumidor = criarConsumidorProcessamentoAnalise({
+      cicloVida,
+      persistencia,
+      fonte: ambiente.fonte,
+      temporizador: timers,
+      duracaoMaximaMs: 100,
+    })
+
+    const processamento = consumidor.processar(ambiente.mensagem)
+    await vi.waitFor(() => expect(persistencia.salvarEConcluir).toHaveBeenCalled())
+    await timers.dispararTimeouts(100)
+    await falhaSolicitadaPromise
+
+    liberarPersistencia()
+    await vi.waitFor(async () => {
+      await expect(ambiente.cicloVida.buscarPorIdPublico(ambiente.snapshotId)).resolves.toMatchObject({
+        estado: 'concluido',
+      })
+    })
+    liberarFalha()
+
+    await expect(processamento).resolves.toMatchObject({ tipo: 'concluido' })
+    expect(cicloVida.registrarFalhaProcessamento).toHaveBeenCalledTimes(1)
+    expect(timers.ativos()).toBe(0)
+  })
+
   it.each([
     ['fonte', new ErroFonteRepositorio('FONTE_INDISPONIVEL'), 'FONTE_INDISPONIVEL'],
     ['limite', new ErroFonteRepositorio('TAMANHO_TOTAL'), 'LIMITE_REPOSITORIO'],
@@ -272,6 +332,63 @@ describe('consumidor de processamento de análise', () => {
     await expect(ambiente.consumidor.processar(ambiente.mensagem)).resolves.toMatchObject({
       tipo: 'falha_registrada',
       falha: { codigo },
+    })
+  })
+
+  it.each([
+    ['fonte indisponível', new ErroFonteRepositorio('FONTE_INDISPONIVEL'), 'FONTE_INDISPONIVEL', 'transitoria'],
+    ['timeout da fonte', new ErroFonteRepositorio('TEMPO_ESGOTADO'), 'TEMPO_ESGOTADO', 'transitoria'],
+  ] as const)('não atribui falha temporária da configuração ao projeto (%s)', async (_nome, erro, codigo, categoria) => {
+    const ambiente = await criarAmbiente()
+    configurarFonteComTsconfig(ambiente)
+    ambiente.fonte.obterConfiguracao = vi.fn(async () => {
+      throw erro
+    })
+
+    await expect(ambiente.consumidor.processar(ambiente.mensagem)).resolves.toMatchObject({
+      tipo: 'falha_registrada',
+      falha: {
+        codigo,
+        categoria,
+        mensagem: expect.not.stringContaining('token'),
+      },
+    })
+  })
+
+  it.each([
+    ['configuração inválida', '{', 'CONFIGURACAO_INVALIDA'],
+    ['configuração não suportada', '{"extends":"./base.json"}', 'CONFIGURACAO_NAO_SUPORTADA'],
+  ] as const)('classifica configuração recebida, mas não utilizável (%s)', async (_nome, conteudo, criterio) => {
+    const ambiente = await criarAmbiente()
+    configurarFonteComTsconfig(ambiente)
+    ambiente.fonte.obterConfiguracao = vi.fn(async () => ({
+      caminho: 'tsconfig.json' as const,
+      conteudo,
+    }))
+
+    await expect(ambiente.consumidor.processar(ambiente.mensagem)).resolves.toMatchObject({
+      tipo: 'falha_registrada',
+      falha: {
+        codigo: 'CONFIGURACAO_INVALIDA',
+        categoria: 'deterministica',
+        detalhes: { criterio },
+      },
+    })
+  })
+
+  it('classifica capacidade ausente do adapter como erro interno seguro', async () => {
+    const ambiente = await criarAmbiente()
+    ambiente.fonte.obterArvore = vi.fn(async () => [
+      ...ambiente.arvore,
+      { caminho: 'tsconfig.json', sha: 'd'.repeat(40) },
+    ])
+
+    await expect(ambiente.consumidor.processar(ambiente.mensagem)).resolves.toMatchObject({
+      tipo: 'falha_registrada',
+      falha: {
+        codigo: 'ERRO_INTERNO',
+        mensagem: 'Não foi possível concluir a análise.',
+      },
     })
   })
 
@@ -379,6 +496,13 @@ async function criarAmbiente(criarSnapshot = true) {
       limites,
     }),
   }
+}
+
+function configurarFonteComTsconfig(ambiente: Awaited<ReturnType<typeof criarAmbiente>>) {
+  ambiente.fonte.obterArvore = vi.fn(async () => [
+    ...ambiente.arvore,
+    { caminho: 'tsconfig.json', sha: 'd'.repeat(40) },
+  ])
 }
 
 function criarTimers() {

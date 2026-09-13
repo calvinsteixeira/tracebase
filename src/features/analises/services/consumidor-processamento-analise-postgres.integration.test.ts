@@ -1,9 +1,10 @@
-import { Pool } from 'pg'
+import { Pool, type PoolClient } from 'pg'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import {
   criarConsumidorProcessamentoAnalise,
   type MensagemProcessamentoAnalise,
+  type TemporizadorProcessamentoAnalise,
 } from './consumidor-processamento-analise'
 import type {
   ArquivoArvoreRepositorio,
@@ -108,6 +109,71 @@ describe('consumidor de processamento PostgreSQL', () => {
     expect(chamadas).toBe(1)
     await expect(segundo.processar(mensagemAtual)).resolves.toEqual({ tipo: 'ja_concluido' })
   })
+
+  it('faz timeout durante a persistência gerar somente falha e rollback no PostgreSQL', async () => {
+    vi.useFakeTimers()
+    let sinalizarPersistenciaIniciada!: () => void
+    const persistenciaIniciada = new Promise<void>((resolve) => {
+      sinalizarPersistenciaIniciada = resolve
+    })
+    let liberarPersistencia!: () => void
+    const persistenciaBloqueada = new Promise<void>((resolve) => {
+      liberarPersistencia = resolve
+    })
+    const poolBloqueado = criarPoolComAtualizacaoFinalBloqueada(
+      sinalizarPersistenciaIniciada,
+      persistenciaBloqueada,
+      pool,
+    )
+    const cicloBloqueado = criarCicloVidaAnalisePostgres(poolBloqueado)
+    const persistenciaBloqueadaPorPrazo = criarRepositorioPersistenciaIndicePostgres(poolBloqueado)
+    const base = Date.now() - 1_000
+    const agora = new Date(base).toISOString()
+    const snapshot = await cicloBloqueado.criarOuReutilizar({
+      repositorio: { ...repositorio, url: `${url}/timeout-persistencia` },
+      commitSha: '9'.repeat(40),
+      referencia: 'main',
+      agora,
+    })
+    const fonte = criarFonte()
+    const consumidor = criarConsumidorProcessamentoAnalise({
+      cicloVida: cicloBloqueado,
+      persistencia: persistenciaBloqueadaPorPrazo,
+      fonte,
+      relogio: { agora: () => agora },
+      temporizador: criarTemporizadorIntegracao(),
+      duracaoMaximaMs: 100,
+    })
+
+    try {
+      const processamento = consumidor.processar(mensagem(snapshot.idPublico, snapshot.tentativa))
+      await persistenciaIniciada
+      await vi.advanceTimersByTimeAsync(100)
+      liberarPersistencia()
+
+      await expect(processamento).resolves.toMatchObject({
+        tipo: 'falha_registrada',
+        falha: { codigo: 'TEMPO_ESGOTADO', categoria: 'transitoria' },
+      })
+      expect(await cicloBloqueado.buscarPorIdPublico(snapshot.idPublico)).toMatchObject({
+        estado: 'falha',
+        falha: { codigo: 'TEMPO_ESGOTADO' },
+      })
+      await expect(
+        persistenciaBloqueadaPorPrazo.buscarPorSnapshotConcluido(snapshot.idPublico),
+      ).resolves.toBeNull()
+
+      const fatos = await pool.query<{ total: string }>(
+        `SELECT COUNT(*)::text AS total FROM indices_estruturais i
+         INNER JOIN snapshots s ON s.id = i.snapshot_id WHERE s.id_publico = $1::uuid`,
+        [snapshot.idPublico],
+      )
+      expect(fatos.rows[0]?.total).toBe('0')
+    } finally {
+      liberarPersistencia()
+      vi.useRealTimers()
+    }
+  })
 })
 
 function criarFonte(): FonteDeRepositorioComArvore {
@@ -124,4 +190,51 @@ function criarFonte(): FonteDeRepositorioComArvore {
 
 function mensagem(snapshotId: string, tentativa: number): MensagemProcessamentoAnalise {
   return { snapshotId, tentativa }
+}
+
+function criarPoolComAtualizacaoFinalBloqueada(
+  sinalizar: () => void,
+  bloqueio: Promise<void>,
+  poolOriginal: Pool,
+): Pool {
+  return {
+    query: poolOriginal.query.bind(poolOriginal),
+    connect: async () => {
+      const cliente = await poolOriginal.connect()
+      const queryOriginal = cliente.query.bind(cliente) as unknown as (
+        ...args: unknown[]
+      ) => Promise<unknown>
+
+      return new Proxy(cliente, {
+        get(alvo, propriedade, receptor) {
+          if (propriedade !== 'query') return Reflect.get(alvo, propriedade, receptor)
+
+          return async (...args: unknown[]) => {
+            const consulta = args[0]
+            const sql = typeof consulta === 'string'
+              ? consulta
+              : consulta && typeof consulta === 'object' && 'text' in consulta
+                ? String(consulta.text)
+                : ''
+
+            if (sql.includes("SET estado = 'concluido'")) {
+              sinalizar()
+              await bloqueio
+            }
+
+            return queryOriginal(...args)
+          }
+        },
+      }) as unknown as PoolClient
+    },
+  } as unknown as Pool
+}
+
+function criarTemporizadorIntegracao(): TemporizadorProcessamentoAnalise {
+  return {
+    setTimeout: (callback, atraso) => setTimeout(callback, atraso),
+    clearTimeout: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+    setInterval: (callback, atraso) => setInterval(callback, atraso),
+    clearInterval: (id) => clearInterval(id as ReturnType<typeof setInterval>),
+  }
 }

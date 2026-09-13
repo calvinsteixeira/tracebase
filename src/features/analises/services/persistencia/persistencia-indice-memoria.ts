@@ -32,6 +32,9 @@ export function criarRepositorioPersistenciaIndiceEmMemoria(
         return { tipo: 'estado_incompativel' }
       }
       if (!leaseValido(snapshot, input)) return { tipo: 'lease_invalido' }
+      if (Date.parse(input.agora) >= Date.parse(input.prazoExpiraEm)) {
+        return { tipo: 'prazo_expirado' }
+      }
 
       const indice = clonarPersistido({ indice: input.indice, arquivos: input.arquivos })
       estado.indices.set(input.snapshotIdPublico, indice)

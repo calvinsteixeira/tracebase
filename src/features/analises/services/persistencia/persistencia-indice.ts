@@ -25,6 +25,7 @@ export interface EntradaPersistenciaIndice {
   tentativa: number
   leaseId: string
   agora: string
+  prazoExpiraEm: string
   indice: IndiceAnalise
   arquivos: ArquivoDoSnapshot[]
 }
@@ -40,6 +41,7 @@ export type ResultadoPersistenciaIndice =
   | { tipo: 'inexistente' }
   | { tipo: 'tentativa_desatualizada' }
   | { tipo: 'lease_invalido' }
+  | { tipo: 'prazo_expirado' }
   | { tipo: 'estado_incompativel' }
 
 export interface RepositorioPersistenciaIndice {

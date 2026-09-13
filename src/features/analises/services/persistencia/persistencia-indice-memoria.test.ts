@@ -352,6 +352,7 @@ function criarEntrada(
     tentativa: snapshot.tentativa,
     leaseId: leaseId ?? 'lease-placeholder',
     agora,
+    prazoExpiraEm: '2026-09-13T12:30:00.000Z',
     indice,
     arquivos: criarArquivosDoSnapshot(),
   }

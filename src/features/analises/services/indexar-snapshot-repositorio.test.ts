@@ -274,7 +274,7 @@ describe('indexarSnapshotRepositorio', () => {
         indexador,
         limites,
       }),
-    ).rejects.toMatchObject({ codigo: 'CONFIGURACAO_INDISPONIVEL' })
+    ).rejects.toMatchObject({ codigo: 'ERRO_INTERNO' })
     expect(indexador).not.toHaveBeenCalled()
   })
 

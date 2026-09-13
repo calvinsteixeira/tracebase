@@ -143,6 +143,19 @@ export function criarConsumidorProcessamentoAnalise(
       }
 
       const timerHeartbeat = temporizador.setInterval(renovar, renovacaoLeaseMs)
+      const buscarConclusaoConfirmada = async (): Promise<
+        Extract<ResultadoProcessamentoAnalise, { tipo: 'concluido' | 'ja_concluido' }> | null
+      > => {
+        const estadoAtual = await opcoes.cicloVida.buscarPorIdPublico(mensagem.snapshotId)
+        if (estadoAtual?.estado !== 'concluido') return null
+
+        const indiceConcluido = await opcoes.persistencia.buscarPorSnapshotConcluido(
+          mensagem.snapshotId,
+        )
+        return indiceConcluido
+          ? { tipo: 'concluido', indice: indiceConcluido }
+          : { tipo: 'ja_concluido' }
+      }
 
       try {
         const resultado = await comPrazo(
@@ -156,6 +169,7 @@ export function criarConsumidorProcessamentoAnalise(
             mensagem,
             aquisicao,
             relogio,
+            prazoExpiraEm: dataParaIso(prazoFinal),
             garantirAtivo: () => {
               if (prazoEsgotado || leasePerdido || dataParaMs(relogio.agora()) >= prazoFinal) {
                 prazoEsgotado ||= dataParaMs(relogio.agora()) >= prazoFinal
@@ -174,7 +188,7 @@ export function criarConsumidorProcessamentoAnalise(
         return { tipo: 'concluido', indice: resultado }
       } catch (erro) {
         if (erro instanceof ErroControleProcessamento && erro.codigo === 'LEASE_PERDIDO') {
-          return { tipo: 'lease_perdido' }
+          return (await buscarConclusaoConfirmada()) ?? { tipo: 'lease_perdido' }
         }
 
         const falha = classificarFalhaAnalise(erro)
@@ -186,7 +200,9 @@ export function criarConsumidorProcessamentoAnalise(
           falha,
         })
 
-        if (!snapshotComFalha) return { tipo: 'lease_perdido' }
+        if (!snapshotComFalha) {
+          return (await buscarConclusaoConfirmada()) ?? { tipo: 'lease_perdido' }
+        }
         return {
           tipo: 'falha_registrada',
           falha: snapshotComFalha.falha ?? {
@@ -221,6 +237,7 @@ async function executarPipeline({
   mensagem,
   aquisicao,
   relogio,
+  prazoExpiraEm,
   garantirAtivo,
 }: {
   cicloVida: RepositorioCicloVidaAnalise
@@ -232,6 +249,7 @@ async function executarPipeline({
   mensagem: MensagemProcessamentoAnalise
   aquisicao: Extract<ResultadoAquisicaoProcessamento, { tipo: 'adquirido' }>
   relogio: RelogioProcessamentoAnalise
+  prazoExpiraEm: string
   garantirAtivo: () => void
   }): Promise<IndicePersistido | ResultadoProcessamentoAnalise> {
   const { snapshot, lease } = aquisicao
@@ -274,6 +292,7 @@ async function executarPipeline({
       tentativa: mensagem.tentativa,
       leaseId: lease.id,
       agora: relogio.agora(),
+      prazoExpiraEm,
       indice,
       arquivos: filtrarArquivosElegiveis(arvore)
         .map((arquivo) => ({
@@ -319,6 +338,7 @@ function mapearPersistencia(
   if (resultado.tipo === 'persistido') return resultado.indice
   if (resultado.tipo === 'ja_concluido') return { tipo: 'ja_concluido' }
   if (resultado.tipo === 'lease_invalido') throw new ErroControleProcessamento('LEASE_PERDIDO')
+  if (resultado.tipo === 'prazo_expirado') throw new ErroControleProcessamento('TEMPO_ESGOTADO')
   return { tipo: resultado.tipo }
 }
 

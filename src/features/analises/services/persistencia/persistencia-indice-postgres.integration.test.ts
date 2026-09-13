@@ -191,6 +191,29 @@ describe('persistência transacional do índice PostgreSQL', () => {
     })
   })
 
+  it('não conclui nem mantém fatos quando o prazo expira no relógio do banco', async () => {
+    const preparado = await prepararSnapshot('9'.repeat(40))
+    const resultado = await persistencia.salvarEConcluir({
+      ...criarEntrada(preparado.snapshot, preparado.leaseId),
+      prazoExpiraEm: new Date(Date.now() - 1_000).toISOString(),
+    })
+
+    expect(resultado).toEqual({ tipo: 'prazo_expirado' })
+    expect(await ciclo.buscarPorIdPublico(preparado.snapshot.idPublico)).toMatchObject({
+      estado: 'processando',
+      leaseId: preparado.leaseId,
+    })
+    await expect(persistencia.buscarPorSnapshotConcluido(preparado.snapshot.idPublico))
+      .resolves.toBeNull()
+
+    const contagem = await pool.query<{ total: string }>(
+      `SELECT COUNT(*)::text AS total FROM indices_estruturais i
+       INNER JOIN snapshots s ON s.id = i.snapshot_id WHERE s.id_publico = $1::uuid`,
+      [preparado.snapshot.idPublico],
+    )
+    expect(contagem.rows[0]?.total).toBe('0')
+  })
+
   it('mantém índices de commits diferentes isolados mesmo com os mesmos ids e caminhos', async () => {
     const primeiro = await prepararSnapshot('e'.repeat(40))
     const segundo = await prepararSnapshot('f'.repeat(40))
@@ -350,6 +373,7 @@ function criarEntrada(
     tentativa: snapshot.tentativa,
     leaseId,
     agora,
+    prazoExpiraEm: '2026-09-13T13:30:00.000Z',
     arquivos,
     indice: criarIndice(snapshot, incluirArquivoExtra, quantidadeSimbolos),
   }

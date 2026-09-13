@@ -27,6 +27,10 @@ export function classificarFalhaAnalise(erro: unknown): FalhaAnaliseParaRegistro
   }
 
   if (erro instanceof ErroFonteRepositorio) {
+    if (erro.codigo === 'ERRO_INTERNO') {
+      return falha('ERRO_INTERNO', 'transitoria', 'Não foi possível concluir a análise.')
+    }
+
     if (erro.codigo === 'TEMPO_ESGOTADO') {
       return falha('TEMPO_ESGOTADO', 'transitoria', 'A análise excedeu o tempo permitido.')
     }
@@ -47,8 +51,7 @@ export function classificarFalhaAnalise(erro: unknown): FalhaAnaliseParaRegistro
 
     if (
       erro.codigo === 'CONFIGURACAO_INVALIDA' ||
-      erro.codigo === 'CONFIGURACAO_NAO_SUPORTADA' ||
-      erro.codigo === 'CONFIGURACAO_INDISPONIVEL'
+      erro.codigo === 'CONFIGURACAO_NAO_SUPORTADA'
     ) {
       return falha(
         'CONFIGURACAO_INVALIDA',
@@ -58,7 +61,11 @@ export function classificarFalhaAnalise(erro: unknown): FalhaAnaliseParaRegistro
       )
     }
 
-    return falha('FONTE_INDISPONIVEL', 'transitoria', 'A fonte do repositório está temporariamente indisponível.')
+    return falha(
+      'FONTE_INDISPONIVEL',
+      'transitoria',
+      'A fonte do repositório está indisponível no momento. Tente novamente.',
+    )
   }
 
   if (erro instanceof ErroConfiguracaoIndexacao) {
