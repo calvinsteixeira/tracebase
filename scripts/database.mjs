@@ -143,11 +143,11 @@ async function resetarBanco(configuracao) {
   await aplicarMigrations(configuracao)
 }
 
-function iniciarAplicacao() {
+function iniciarAplicacao(configuracao) {
   const processo = spawn('pnpm', ['dev:app'], {
     cwd: raiz,
     stdio: 'inherit',
-    env: carregarAmbienteLocal(),
+    env: { ...carregarAmbienteLocal(), DATABASE_URL: configuracao.url },
   })
 
   processo.on('exit', (codigo, sinal) => {
@@ -192,7 +192,7 @@ async function main() {
     await subirPostgres(configuracao)
     await aguardarPostgres(configuracao)
     await aplicarMigrations(configuracao)
-    iniciarAplicacao()
+    iniciarAplicacao(configuracao)
     return
   }
 

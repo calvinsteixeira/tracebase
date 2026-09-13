@@ -10,6 +10,7 @@ export type CategoriaFalhaAnalise = 'transitoria' | 'deterministica'
 
 export type CodigoFalhaAnalise =
   | 'FONTE_INDISPONIVEL'
+  | 'LIMITE_GITHUB'
   | 'TEMPO_ESGOTADO'
   | 'CONFIGURACAO_INVALIDA'
   | 'LIMITE_REPOSITORIO'

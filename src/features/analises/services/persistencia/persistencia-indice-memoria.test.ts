@@ -117,7 +117,7 @@ describe('persistência do índice em memória', () => {
   it('não reutiliza índice de outro commit e mantém fatos isolados', async () => {
     const estado = criarEstadoCicloVidaAnaliseEmMemoria()
     const ciclo = criarCicloVidaAnaliseEmMemoria(estado)
-    const persistencia = criarRepositorioPersistenciaIndiceEmMemoria(estado)
+    const persistencia = criarRepositorioPersistenciaIndiceEmMemoria(estado, { agora: () => agora })
     const primeiro = await ciclo.criarOuReutilizar({
       ...dadosBase,
       commitSha: 'a'.repeat(40),

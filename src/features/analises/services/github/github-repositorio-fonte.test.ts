@@ -61,6 +61,16 @@ describe('criarFonteRepositorioGitHub', () => {
     )
   })
 
+  it.each([
+    new Response(null, { status: 429 }),
+    new Response(null, { status: 403, headers: { 'x-ratelimit-remaining': '0' } }),
+    new Response(null, { status: 403, headers: { 'retry-after': '60' } }),
+  ])('mapeia limite ao buscar a árvore', async (resposta) => {
+    const fonte = criarFonteRepositorioGitHub({ buscar: vi.fn(async () => resposta) })
+
+    await expect(fonte.obterArvore({ repositorio: { url: 'https://github.com/dono/repositorio', proprietario: 'dono', nome: 'repositorio' }, commitSha: 'a'.repeat(40) })).rejects.toMatchObject({ codigo: 'LIMITE_GITHUB' })
+  })
+
   it('obtém a árvore por um commit explícito, sem consultar a branch', async () => {
     const commitSha = '9'.repeat(40)
     const buscar = vi.fn<typeof fetch>(async () =>
