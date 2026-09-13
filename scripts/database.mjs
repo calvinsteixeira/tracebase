@@ -3,11 +3,10 @@ import { fileURLToPath } from 'node:url'
 import { join, resolve } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { setTimeout as esperar } from 'node:timers/promises'
+import { criarAmbienteAplicacao, obterConfiguracao } from './database-ambiente.mjs'
 const raiz = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const arquivoCompose = join(raiz, 'docker-compose.yml')
 const projetoCompose = ['compose', '-p', 'tracebase', '-f', arquivoCompose]
-const urlLocalPadrao =
-  'postgresql://tracebase:tracebase_local@localhost:5432/tracebase?sslmode=disable'
 
 function carregarAmbienteLocal() {
   const ambiente = {}
@@ -31,21 +30,6 @@ function carregarAmbienteLocal() {
   }
 
   return { ...ambiente, ...process.env }
-}
-
-export function obterConfiguracao(ambiente) {
-  const url = ambiente.DATABASE_URL || urlLocalPadrao
-  const analisada = new URL(url)
-
-  return {
-    url,
-    banco: decodeURIComponent(analisada.pathname.slice(1)) || ambiente.POSTGRES_DB || 'tracebase',
-    usuario: decodeURIComponent(analisada.username) || ambiente.POSTGRES_USER || 'tracebase',
-  }
-}
-
-export function criarAmbienteAplicacao(ambiente, configuracao) {
-  return { ...ambiente, DATABASE_URL: configuracao.url }
 }
 
 function garantirBancoLocal(configuracao) {

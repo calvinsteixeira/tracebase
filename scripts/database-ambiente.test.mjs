@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { criarAmbienteAplicacao, obterConfiguracao } from './database.mjs'
+import { criarAmbienteAplicacao, obterConfiguracao } from './database-ambiente.mjs'
 
 describe('ambiente da aplicação local', () => {
   it('usa a URL padrão quando DATABASE_URL não existe', () => {
