@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/filas/analises/route.ts": {
+      "maxDuration": 300,
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "analises"
+        }
+      ]
+    }
+  }
+}
