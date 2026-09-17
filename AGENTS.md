@@ -17,6 +17,8 @@ Este é o arquivo canônico de instruções do projeto. Ele fica na raiz e não 
 - Mensagens de commit devem ser objetivas, em português e seguir Conventional Commits, por exemplo `feat: adicionar filtro de projetos` ou `fix: corrigir cache da lista`.
 - O título de todo Pull Request/MR deve ser em português, seguir o mesmo padrão `feat:` ou `fix:` e conter uma descrição breve da entrega, por exemplo `feat: adicionar filtro de projetos`.
 - A descrição do Pull Request/MR deve resumir a entrega e listar as validações executadas; não use títulos genéricos como `update`, `changes` ou `inicial`.
+- A descrição deve ser Markdown legível no GitHub, com quebras de linha reais entre seções, parágrafos e itens. Nunca envie os caracteres literais `\\n` como substitutos de quebra de linha.
+- Depois de criar ou atualizar um Pull Request/MR, confira a descrição publicada. Corrija-a antes de informar que o PR está pronto se headings, listas ou parágrafos não forem renderizados corretamente.
 - Não inclua segredos, tokens, credenciais, dados pessoais ou arquivos `.env` nos commits.
 - Preserve alterações existentes de outras pessoas. Não use comandos destrutivos como `git reset --hard` ou `git checkout --` sem autorização explícita.
 - Ao finalizar, descreva o que mudou, as validações executadas e qualquer limitação restante.
