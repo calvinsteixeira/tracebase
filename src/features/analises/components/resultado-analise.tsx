@@ -1,6 +1,8 @@
+'use client'
+
 import { CheckCircle2, CircleAlert, Clock3, GitBranch, Layers3, Waypoints } from 'lucide-react'
 import Link from 'next/link'
-import { getFormatter, getTranslations } from 'next-intl/server'
+import { useFormatter, useTranslations } from 'next-intl'
 
 import type { ResumoStatusAnalise } from '../services/persistencia/ciclo-vida-analise'
 import { obterChaveMensagemErro } from '../services/mensagens-erros-analise'
@@ -9,10 +11,10 @@ interface ResultadoAnaliseProps {
   resumo: ResumoStatusAnalise
 }
 
-export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
-  const t = await getTranslations('resultadoAnalise')
-  const tErros = await getTranslations('erros')
-  const formatador = await getFormatter()
+export function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
+  const t = useTranslations('resultadoAnalise')
+  const tErros = useTranslations('erros')
+  const formatador = useFormatter()
   const concluida = resumo.estado === 'concluido'
   const falhou = resumo.estado === 'falha'
 
@@ -51,7 +53,6 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
               {resumo.contagens?.relacoesImportacao ? (
                 <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-primary/25 bg-primary/[0.03] p-8 text-center">
                   <div className="max-w-sm">
-                    <p className="text-sm font-medium">{t('visualizacao.pronta')}</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('visualizacao.relacoesEncontradas', { quantidade: resumo.contagens.relacoesImportacao })}</p>
                   </div>
                 </div>
@@ -87,7 +88,7 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             {falhou && resumo.falha ? tErros(obterChaveMensagemErro(resumo.falha.codigo)) : t('indisponivel.andamentoDescricao')}
           </p>
-          <Link href="/#analises-recentes-titulo" className="mt-7 inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25">
+          <Link href={`/?analise=${encodeURIComponent(resumo.idPublico)}`} className="mt-7 inline-flex min-h-11 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25">
             {t('voltarAcompanhamento')}
           </Link>
         </section>

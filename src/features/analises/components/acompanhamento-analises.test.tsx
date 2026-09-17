@@ -22,6 +22,7 @@ describe('AcompanhamentoAnalises', () => {
   })
 
   afterEach(() => {
+    window.history.replaceState({}, '', '/')
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
@@ -356,6 +357,18 @@ describe('AcompanhamentoAnalises', () => {
 
     await waitFor(() => expect(screen.getByText('Nenhuma análise recente neste navegador.')).toBeInTheDocument())
     expect(window.localStorage.getItem('tracebase:analises-recentes:v1')).toBe('[]')
+  })
+
+  it('reabre uma análise válida informada na URL e a registra como recente', async () => {
+    window.history.pushState({}, '', `/?analise=${id}`)
+    mockFetch(resposta(resumo({ estado: 'processando', etapa: 'indexacao' })))
+
+    renderTela()
+
+    expect(await screen.findByText('Processando')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Análise' })).toHaveAttribute('aria-current', 'step')
+    expect(JSON.parse(window.localStorage.getItem('tracebase:analises-recentes:v1') ?? '[]')).toContain(id)
+    expect(fetch).toHaveBeenCalledWith(`/api/analises/${id}`, expect.anything())
   })
 
   it('não expõe lease, stack, JSON bruto ou textos de planejamento', async () => {

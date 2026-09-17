@@ -1,5 +1,3 @@
-import { Pool } from 'pg'
-
 import { criarConsumidorProcessamentoAnalise, criarExecutorLocalProcessamento } from './consumidor-processamento-analise'
 import { criarFonteRepositorioGitHub } from './github/github-repositorio-fonte'
 import { criarApiAnalises, obterLimiteAguardandoSemAtividadeMs, obterLimiteAnaliseDemoradaMs } from './api-analises'
@@ -9,6 +7,7 @@ import type { FilaDeAnalises } from './fila-analises'
 import { criarCicloVidaAnalisePostgres } from './persistencia/ciclo-vida-analise-postgres'
 import { criarRepositorioPersistenciaIndicePostgres } from './persistencia/persistencia-indice-postgres'
 import type { RepositorioApiAnalises } from './persistencia/repositorio-api-analises'
+import { obterPoolPostgresServidor } from './persistencia/pool-postgres-servidor'
 
 let api: ReturnType<typeof criarApiAnalises> | undefined
 let consumidor: ReturnType<typeof criarConsumidorProcessamentoAnalise> | undefined
@@ -28,7 +27,7 @@ export function selecionarFilaAnalises({
 
 export function obterApiAnalisesServidor() {
   if (api) return api
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+  const pool = obterPoolPostgresServidor()
   const cicloVida = criarCicloVidaAnalisePostgres(pool)
   repositorioServidor = cicloVida
   const persistencia = criarRepositorioPersistenciaIndicePostgres(pool)

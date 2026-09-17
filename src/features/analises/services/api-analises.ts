@@ -17,24 +17,19 @@ import {
   registrarErroInternoApi,
   type CodigoErroApiAnalise,
 } from './erros-api-analises'
+import {
+  LIMITE_AGUARDANDO_SEM_ATIVIDADE_MS,
+  LIMITE_ANALISE_DEMORADA_MS,
+  obterLimiteAguardandoSemAtividadeMs,
+  obterLimiteAnaliseDemoradaMs,
+} from './politica-tempo-analise'
 
-export const LIMITE_AGUARDANDO_SEM_ATIVIDADE_MS = 60_000
-export const LIMITE_ANALISE_DEMORADA_MS = 30_000
+export { LIMITE_AGUARDANDO_SEM_ATIVIDADE_MS, LIMITE_ANALISE_DEMORADA_MS, obterLimiteAguardandoSemAtividadeMs, obterLimiteAnaliseDemoradaMs }
 
 type ResultadoPublicacao =
   | { tipo: 'publicada'; resumo: ResumoStatusAnalise }
   | { tipo: 'falhou'; resumo: ResumoStatusAnalise }
   | { tipo: 'estado_avancou'; resumo: ResumoStatusAnalise }
-
-export function obterLimiteAguardandoSemAtividadeMs() {
-  const valor = Number(process.env.TRACEBASE_SCHEDULE_TIMEOUT_MS)
-  return Number.isInteger(valor) && valor > 0 ? valor : LIMITE_AGUARDANDO_SEM_ATIVIDADE_MS
-}
-
-export function obterLimiteAnaliseDemoradaMs() {
-  const valor = Number(process.env.TRACEBASE_SLOW_ANALYSIS_MS)
-  return Number.isInteger(valor) && valor > 0 ? valor : LIMITE_ANALISE_DEMORADA_MS
-}
 
 export interface DependenciasApiAnalises {
   repositorio: RepositorioApiAnalises

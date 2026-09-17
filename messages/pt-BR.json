@@ -72,15 +72,14 @@
     "visualizacao": {
       "eyebrow": "Visão do repositório",
       "titulo": "Arquitetura do código",
-      "pronta": "A estrutura deste repositório está pronta para ser explorada.",
-      "relacoesEncontradas": "{quantidade} relações internas foram encontradas nesta análise.",
+      "relacoesEncontradas": "{quantidade} relações internas foram identificadas neste snapshot.",
       "vaziaTitulo": "Nenhuma relação interna encontrada",
       "vaziaDescricao": "Este snapshot não possui conexões entre arquivos para apresentar aqui."
     },
     "detalhe": {
       "eyebrow": "Contexto",
       "titulo": "Detalhes do snapshot",
-      "descricao": "Este painel reúne um resumo seguro da versão analisada. Selecione um item quando estiver disponível."
+      "descricao": "Este painel reúne um resumo seguro da versão analisada, com os principais fatos encontrados."
     },
     "resumo": {
       "arquivos": "Arquivos",

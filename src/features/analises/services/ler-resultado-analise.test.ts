@@ -35,4 +35,18 @@ describe('lerResultadoAnalise', () => {
     await expect(lerResultadoAnalise(resumo.idPublico, dependencias)).resolves.toBeNull()
     expect(obterResumoStatus).toHaveBeenCalledTimes(1)
   })
+
+  it('usa os limites configurados pela política compartilhada', async () => {
+    vi.stubEnv('TRACEBASE_SCHEDULE_TIMEOUT_MS', '1234')
+    vi.stubEnv('TRACEBASE_SLOW_ANALYSIS_MS', '5678')
+    const obterResumoStatus = vi.fn().mockResolvedValue(resumo)
+
+    await lerResultadoAnalise(resumo.idPublico, { repositorio: { obterResumoStatus } })
+
+    expect(obterResumoStatus).toHaveBeenCalledWith(expect.objectContaining({
+      limiteAguardandoMs: 1234,
+      limiteDemoradaMs: 5678,
+    }))
+    vi.unstubAllEnvs()
+  })
 })

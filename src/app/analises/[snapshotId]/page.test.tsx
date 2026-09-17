@@ -12,8 +12,8 @@ vi.mock('@/features/analises/services/ler-resultado-analise', () => ({
   lerResultadoAnalise: vi.fn(),
 }))
 
-vi.mock('@/features/analises/services/composicao-analises-servidor', () => ({
-  obterRepositorioApiAnalisesServidor: vi.fn(() => ({ obterResumoStatus: vi.fn() })),
+vi.mock('@/features/analises/services/composicao-resultado-analise-servidor', () => ({
+  obterRepositorioLeituraResultadoAnalise: vi.fn(() => ({ obterResumoStatus: vi.fn() })),
 }))
 
 const resumo = {
