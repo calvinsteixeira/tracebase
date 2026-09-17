@@ -443,6 +443,22 @@ As fontes de verdade do design system são `components.json`, `src/app/globals.c
 - Preserve foco visível, estados hover/focus/disabled/loading e responsividade.
 - Não altere o preset global para resolver uma preferência visual local.
 
+### Shell e fluxo guiado de análise
+
+- As telas principais do Tracebase usam o `AppShell` compartilhado. Não replique cabeçalho, atalho para o conteúdo, troca de tema ou limites de largura dentro de páginas e features.
+- A jornada inicial é um workspace guiado por repositório: **Conectar**, **Elegibilidade** e **Análise**. Cada etapa deve apresentar somente a decisão ou ação necessária naquele momento, sem voltar a transformar a página em um dashboard com blocos concorrentes.
+- Uma etapa só pode ser acessível quando seus dados já existem. Ao navegar para uma etapa anterior disponível, preserve a URL verificada, o resultado de elegibilidade e a análise atual; navegar pela interface não deve repetir chamadas ao GitHub, criar outro snapshot ou descartar contexto sem uma ação explícita de “Nova análise”.
+- O histórico de análises pertence a uma visualização própria dentro do workspace, e não deve disputar atenção com a jornada de criar e acompanhar uma análise. Mostre-o sob demanda e preserve um caminho claro de retorno ao contexto atual.
+- Reutilize `NavegacaoFluxoAnalise` para representar etapas dessa jornada. Cada etapa deve ter nome acessível, estado indisponível quando aplicável e `aria-current="step"` somente na etapa atual.
+
+### Hierarquia visual e comunicação de estado
+
+- Use Geist Sans para textos de interface, títulos e descrições. Reserve Geist Mono para identificadores técnicos que se beneficiam de leitura literal, como caminhos, SHA de commit, nomes de arquivo e trechos de código.
+- Mantenha identidade do repositório, branch e commit próximos do contexto da análise, mas apresente metadados secundários de modo compacto; eles não devem competir visualmente com a ação ou o resultado principal.
+- Trate estado e etapa como conceitos diferentes: o **estado** informa se a análise está aguardando, processando, concluída ou falhou; a **etapa** explica o trabalho em curso. Quando a análise estiver concluída, mostre uma conclusão orientada à pessoa usuária — por exemplo, “Análise concluída” — e não a última etapa interna executada. Em falhas, exiba a etapa somente quando ela ajudar a compreender o problema.
+- Estados de processamento podem mostrar progresso indeterminado, mas devem permanecer claros mesmo sem animação. Respeite `prefers-reduced-motion`; não use movimento contínuo apenas como ornamento.
+- Para informações estruturadas de mesmo nível, prefira grupos compactos e escaneáveis a uma sequência de cards visualmente pesados. Use bordas, espaçamento e tipografia para organizar a leitura, sem criar superfícies decorativas extras.
+
 ## Acessibilidade
 
 - Prefira HTML semântico antes de ARIA.
