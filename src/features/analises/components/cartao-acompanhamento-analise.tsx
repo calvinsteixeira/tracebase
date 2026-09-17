@@ -31,7 +31,7 @@ export function CartaoAcompanhamentoAnalise({
 
   if (!resumo) {
     return (
-      <section aria-labelledby="cartao-analise-titulo" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <section aria-labelledby="cartao-analise-titulo" className="rounded-3xl border border-border bg-card p-6 shadow-[0_18px_55px_-36px_var(--primary)] sm:p-7">
         <h3 id="cartao-analise-titulo" className="text-lg font-semibold">{t('carregando')}</h3>
         {carregando && <p className="mt-2 text-sm text-muted-foreground">{t('consultando')}</p>}
         {erroAtualizacao && (
@@ -46,7 +46,7 @@ export function CartaoAcompanhamentoAnalise({
   const tituloId = `analise-${resumo.idPublico}-titulo`
 
   return (
-    <article aria-labelledby={tituloId} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <article aria-labelledby={tituloId} className="rounded-3xl border border-border bg-card p-6 shadow-[0_18px_55px_-36px_var(--primary)] sm:p-7">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t('analise')}</p>

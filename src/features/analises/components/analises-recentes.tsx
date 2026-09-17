@@ -93,10 +93,10 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoIds,
   }, [carregando, consultas, idsVisiveis, onAnuncio, t, tErros])
 
   return (
-    <section aria-labelledby="analises-recentes-titulo" className="mt-12">
-      <div className="mb-4">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">{t('acompanhamento')}</p>
-        <h2 id="analises-recentes-titulo" className="mt-2 text-2xl font-semibold tracking-tight">{t('recentes.titulo')}</h2>
+    <section aria-labelledby="analises-recentes-titulo" className="mt-16">
+      <div className="mb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('acompanhamento')}</p>
+        <h2 id="analises-recentes-titulo" className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{t('recentes.titulo')}</h2>
       </div>
 
       {carregando ? (

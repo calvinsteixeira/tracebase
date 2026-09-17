@@ -65,7 +65,7 @@ export function ResultadoElegibilidade({ resultado, onIniciar, iniciando = false
   return (
     <section
       aria-labelledby="resultado-elegibilidade-titulo"
-      className={`mt-8 rounded-2xl border bg-card p-6 shadow-sm ${visual.container}`}
+      className={`mt-8 rounded-3xl border bg-card p-6 shadow-[0_18px_55px_-36px_var(--primary)] sm:p-7 ${visual.container}`}
     >
       <div className="mb-6">
         <div className={`flex items-center gap-3 rounded-xl border p-4 ${visual.statusContainer}`}>

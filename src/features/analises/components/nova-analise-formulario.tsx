@@ -47,16 +47,19 @@ export function NovaAnaliseFormulario({ onIniciar, iniciando = false, erroInicio
   }
 
   return (
-    <section id="nova-analise" className="w-full max-w-3xl">
-      <div className="text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">{t('eyebrow')}</p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">{t('titulo')}</h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">{t('descricao')}</p>
+    <section id="nova-analise" className="relative w-full max-w-4xl">
+      <div className="max-w-3xl">
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          <span className="size-1.5 rounded-full bg-primary" />
+          {t('eyebrow')}
+        </div>
+        <h1 className="max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight text-balance sm:text-6xl">{t('titulo')}</h1>
+        <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">{t('descricao')}</p>
       </div>
 
-      <form onSubmit={enviarFormulario} className="mt-10 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+      <form onSubmit={enviarFormulario} className="mt-10 rounded-3xl border border-border bg-card/90 p-5 shadow-[0_24px_80px_-35px_var(--primary)] backdrop-blur sm:p-7">
         <div className="space-y-2">
-          <label htmlFor="repositorio-url" className="text-sm font-medium">
+          <label htmlFor="repositorio-url" className="text-sm font-semibold">
             {t('urlLabel')}
           </label>
           <input
@@ -69,9 +72,9 @@ export function NovaAnaliseFormulario({ onIniciar, iniciando = false, erroInicio
             placeholder={t('urlPlaceholder')}
             aria-invalid={Boolean(mensagemErro)}
             aria-describedby={`repositorio-orientacao${mensagemErro ? ' repositorio-url-erro' : ''}`}
-            className="flex h-12 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="flex h-14 w-full rounded-2xl border border-input bg-background/80 px-4 text-sm outline-none transition placeholder:text-muted-foreground/60 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/15"
           />
-          <p id="repositorio-orientacao" className="text-sm text-muted-foreground">
+          <p id="repositorio-orientacao" className="max-w-3xl text-sm leading-6 text-muted-foreground">
             {t('orientacao', {
               quantidade: LIMITES_PADRAO_ELEGIBILIDADE_REPOSITORIO.quantidadeMaximaArquivosElegiveis,
               arquivo: formatador.number(
@@ -90,7 +93,7 @@ export function NovaAnaliseFormulario({ onIniciar, iniciando = false, erroInicio
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
+          className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-60"
         >
           {mutation.isPending ? t('verificando') : t('verificar')}
         </button>

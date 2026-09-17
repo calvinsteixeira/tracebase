@@ -44,6 +44,7 @@
   "analises": {
     "acompanhamento": "Acompanhamento",
     "analiseAtual": "Análise atual",
+    "tempoReal": "Tempo real",
     "analise": "Análise de repositório",
     "carregando": "Carregando análise",
     "consultando": "Consultando o estado mais recente.",

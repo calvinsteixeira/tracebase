@@ -74,7 +74,8 @@ export function AcompanhamentoAnalises() {
   }
 
   return (
-    <div className="w-full max-w-5xl">
+    <div className="relative w-full max-w-6xl">
+      <div aria-hidden="true" className="pointer-events-none absolute -top-24 right-0 size-72 rounded-full bg-primary/10 blur-3xl" />
       <NovaAnaliseFormulario
         onIniciar={(url) => {
           setErroInicio(null)
