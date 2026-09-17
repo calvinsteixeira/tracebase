@@ -3,6 +3,15 @@
     "titulo": "Tracebase — Nova análise",
     "descricao": "Analise um repositório público do GitHub com segurança."
   },
+  "shell": {
+    "marca": "Tracebase",
+    "pularConteudo": "Pular para o conteúdo",
+    "navegacao": "Navegação principal",
+    "novaAnalise": "Nova análise",
+    "historico": "Histórico",
+    "operacional": "Sistema operacional",
+    "repositoriosPublicos": "Repositórios públicos"
+  },
   "home": {
     "eyebrow": "Análise de repositório",
     "titulo": "Entenda seu código a partir do GitHub",
@@ -10,13 +19,46 @@
     "orientacao": "O Tracebase verifica repositórios públicos e considera apenas arquivos JavaScript e TypeScript (.js, .jsx, .ts ou .tsx): até {quantidade} arquivos, {arquivo} por arquivo e {total} no total.",
     "urlLabel": "URL do repositório GitHub",
     "urlPlaceholder": "https://github.com/dono/repositorio",
+    "somentePublicos": "Somente repositórios públicos",
     "verificar": "Verificar repositório",
     "verificando": "Verificando repositório...",
     "carregando": "O Tracebase está verificando o repositório público no GitHub.",
     "iniciar": "Iniciar análise",
     "iniciando": "Iniciando análise...",
     "novo": "Verificar outro repositório",
-    "inicioFalhou": "Não foi possível iniciar a análise. Tente novamente."
+    "inicioFalhou": "Não foi possível iniciar a análise. Tente novamente.",
+    "visaoGeral": {
+      "eyebrow": "Seu espaço de análise",
+      "titulo": "Uma leitura clara do seu repositório.",
+      "descricao": "Comece com uma URL pública. Você revisa os limites antes de iniciar e acompanha o processamento em um único lugar.",
+      "etapas": {
+        "conectar": "Conecte um repositório público",
+        "verificar": "Revise os dados encontrados",
+        "acompanhar": "Acompanhe o processamento"
+      }
+    }
+  },
+  "fluxo": {
+    "navegacao": "Progresso da análise",
+    "novoWorkspace": "Workspace de análise",
+    "tituloInicial": "Novo repositório",
+    "repositorioAtual": "Repositório atual",
+    "abrirHistorico": "Ver histórico",
+    "voltarFluxo": "Voltar ao repositório",
+    "etapas": {
+      "conectar": "Conectar",
+      "revisar": "Elegibilidade",
+      "acompanhar": "Análise"
+    },
+    "acoes": {
+      "iniciar": "Iniciar análise",
+      "iniciando": "Iniciando análise..."
+    },
+    "revisao": {
+      "eyebrow": "Revisão do repositório",
+      "titulo": "Confira os dados antes de continuar",
+      "descricao": "Revise o snapshot encontrado e avance quando estiver pronto para iniciar o processamento."
+    }
   },
   "elegibilidade": {
     "status": {
@@ -44,6 +86,7 @@
   "analises": {
     "acompanhamento": "Acompanhamento",
     "analiseAtual": "Análise atual",
+    "tempoReal": "Tempo real",
     "analise": "Análise de repositório",
     "carregando": "Carregando análise",
     "consultando": "Consultando o estado mais recente.",
@@ -53,6 +96,7 @@
     "tentativa": "Tentativa",
     "atualizadoEm": "Última atualização",
     "etapa": "Etapa atual",
+    "etapaConcluida": "Análise concluída",
     "aguardandoEtapa": "Aguardando o processamento começar",
     "demorada": "Esta análise está levando mais tempo que o esperado, mas continua em andamento.",
     "falhaTitulo": "Não foi possível concluir a análise",
@@ -76,6 +120,9 @@
     "recentes": {
       "titulo": "Análises recentes neste navegador",
       "vazia": "Nenhuma análise recente neste navegador.",
+      "vaziaDescricao": "As análises iniciadas por você aparecerão aqui para consulta rápida.",
+      "somenteAtual": "A análise atual já está em destaque acima.",
+      "quantidade": "{quantidade, plural, =1 {# análise} other {# análises}}",
       "carregando": "Carregando análises recentes..."
     },
     "contagens": {

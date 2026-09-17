@@ -39,10 +39,16 @@ export function AnaliseAtual({ snapshotId, onTentarNovamente, tentandoNovamente,
   }, [codigoErroAtualizacao, onAnuncio, t, tErros])
 
   return (
-    <section aria-labelledby="analise-atual-titulo" className="mt-12">
-      <div className="mb-4">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">{t('acompanhamento')}</p>
-        <h2 id="analise-atual-titulo" className="mt-2 text-2xl font-semibold tracking-tight">{t('analiseAtual')}</h2>
+    <section aria-labelledby="analise-atual-titulo" className="lg:mt-9">
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('tempoReal')}</p>
+          <h2 id="analise-atual-titulo" className="mt-2 text-2xl font-semibold tracking-[-0.03em]">{t('analiseAtual')}</h2>
+        </div>
+        <span className="relative mb-2 flex size-2" aria-hidden="true">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-40 motion-reduce:hidden" />
+          <span className="relative inline-flex size-2 rounded-full bg-primary" />
+        </span>
       </div>
       <CartaoAcompanhamentoAnalise
         resumo={consulta.data}

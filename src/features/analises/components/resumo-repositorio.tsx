@@ -65,24 +65,24 @@ export function ResultadoElegibilidade({ resultado, onIniciar, iniciando = false
   return (
     <section
       aria-labelledby="resultado-elegibilidade-titulo"
-      className={`mt-8 rounded-2xl border bg-card p-6 shadow-sm ${visual.container}`}
+      className={`mt-6 rounded-2xl border bg-card p-5 shadow-[0_20px_60px_-48px_var(--foreground)] sm:p-6 ${visual.container}`}
     >
-      <div className="mb-6">
-        <div className={`flex items-center gap-3 rounded-xl border p-4 ${visual.statusContainer}`}>
+      <div className="mb-5">
+        <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 ${visual.statusContainer}`}>
           <visual.IconeStatus aria-hidden="true" className={`size-5 shrink-0 ${visual.statusText}`} />
-          <p className={`text-sm font-semibold ${visual.statusText}`}>{statusLabel}</p>
+          <p className={`text-xs font-semibold ${visual.statusText}`}>{statusLabel}</p>
         </div>
-        <h2 id="resultado-elegibilidade-titulo" className="mt-2 text-2xl font-semibold tracking-tight">
+        <h2 id="resultado-elegibilidade-titulo" className="mt-4 text-2xl font-semibold tracking-[-0.03em]">
           {resultado.repositorio.proprietario}/{resultado.repositorio.nome}
         </h2>
       </div>
 
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-border/70 bg-muted/40 p-4">
+      <dl className="grid overflow-hidden rounded-xl border border-border/70 sm:grid-cols-2">
+        <div className="border-b border-border/70 bg-muted/25 p-4 sm:border-r">
           <dt className="text-sm text-muted-foreground">{t('branch')}</dt>
           <dd className="mt-1 font-medium">{resultado.snapshot.referencia}</dd>
         </div>
-        <div className="rounded-xl border border-border/70 bg-muted/40 p-4">
+        <div className="border-b border-border/70 bg-muted/25 p-4">
           <dt className="text-sm text-muted-foreground">{t('arquivos')}</dt>
           <dd className="mt-1 font-medium">
             {t('arquivosValor', {
@@ -91,7 +91,7 @@ export function ResultadoElegibilidade({ resultado, onIniciar, iniciando = false
             })}
           </dd>
         </div>
-        <div className="rounded-xl border border-border/70 bg-muted/40 p-4 sm:col-span-2">
+        <div className="border-b border-border/70 bg-muted/25 p-4 sm:col-span-2">
           <dt className="text-sm text-muted-foreground">{t('tamanhoTotal')}</dt>
           <dd className="mt-1 font-medium">
             {resultado.tamanhoTotalBytes === null
@@ -104,7 +104,7 @@ export function ResultadoElegibilidade({ resultado, onIniciar, iniciando = false
                 })}
           </dd>
         </div>
-        <div className="rounded-xl border border-border/70 bg-muted/40 p-4 sm:col-span-2">
+        <div className="bg-muted/25 p-4 sm:col-span-2">
           <dt className="text-sm text-muted-foreground">{t('commit')}</dt>
           <dd className="mt-1 break-all font-mono text-sm">{resultado.snapshot.commitSha}</dd>
         </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { Archive, Clock3 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 
@@ -18,6 +19,7 @@ interface AnalisesRecentesProps {
   carregando: boolean
   onRemover: (ids: string[]) => void
   onAnuncio?: (anuncio: string) => void
+  integrado?: boolean
 }
 
 type EventoAcessibilidade = {
@@ -27,7 +29,7 @@ type EventoAcessibilidade = {
   snapshotId: string
 }
 
-export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoIds, errosRetry, carregando, onRemover, onAnuncio }: AnalisesRecentesProps) {
+export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoIds, errosRetry, carregando, onRemover, onAnuncio, integrado = false }: AnalisesRecentesProps) {
   const t = useTranslations('analises')
   const tErros = useTranslations('erros')
   const eventosAnunciados = useRef(new Set<string>())
@@ -93,24 +95,34 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoIds,
   }, [carregando, consultas, idsVisiveis, onAnuncio, t, tErros])
 
   return (
-    <section aria-labelledby="analises-recentes-titulo" className="mt-12">
-      <div className="mb-4">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary">{t('acompanhamento')}</p>
-        <h2 id="analises-recentes-titulo" className="mt-2 text-2xl font-semibold tracking-tight">{t('recentes.titulo')}</h2>
+    <section aria-labelledby="analises-recentes-titulo" className={integrado ? 'px-5 py-8 sm:px-7 sm:py-10' : 'mt-20 scroll-mt-28 border-t border-border/70 pt-10 sm:mt-24 sm:pt-12'}>
+      <div className="mb-6 flex items-end justify-between gap-6">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            <Clock3 aria-hidden="true" className="size-4" />
+            {t('acompanhamento')}
+          </p>
+          <h2 id="analises-recentes-titulo" className="mt-2 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('recentes.titulo')}</h2>
+        </div>
+        {idsVisiveis.length > 0 && <span className="hidden text-sm text-muted-foreground sm:block">{t('recentes.quantidade', { quantidade: idsVisiveis.length })}</span>}
       </div>
 
       {carregando ? (
-        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground" role="status">
           {t('recentes.carregando')}
         </div>
       ) : ids.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-          {t('recentes.vazia')}
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-10 text-center">
+          <span className="flex size-11 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm">
+            <Archive aria-hidden="true" className="size-5" />
+          </span>
+          <p className="mt-4 text-sm font-medium text-foreground">{t('recentes.vazia')}</p>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground">{t('recentes.vaziaDescricao')}</p>
         </div>
       ) : idsVisiveis.length === 0 ? (
-        <p className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">{t('recentes.vazia')}</p>
+        <p className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">{t('recentes.somenteAtual')}</p>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 xl:grid-cols-2">
           {consultas.map((consulta, indice) => {
             const erro = consulta.error instanceof ErroApiAnaliseCliente ? consulta.error : null
             const resumo = consulta.data as ResumoStatusAnaliseCliente | undefined
