@@ -227,4 +227,41 @@ describe('API assíncrona de análises', () => {
     expect(respostaDesconhecida.status).toBe(500)
     expect((await respostaDesconhecida.json()).erro.codigo).toBe('ERRO_INTERNO')
   })
+
+  it('registra detalhes seguros somente para erro interno sem expô-los na resposta', async () => {
+    const registrar = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const segredo = 'DATABASE_URL=postgresql://usuario:senha-real@banco.example/tracebase token=token-real'
+    const apiInterna = criarApiAnalises({
+      repositorio: criarCicloVidaAnaliseEmMemoria(),
+      fila: { publicar: vi.fn(async () => undefined) },
+      fonte: { obterResumoRepositorio: vi.fn(async () => { throw new Error(segredo) }) },
+    })
+
+    const respostaInterna = await apiInterna.elegibilidade(request({ url }))
+    const corpoInterno = await respostaInterna.json()
+
+    expect(respostaInterna.status).toBe(500)
+    expect(corpoInterno).toEqual({
+      erro: { codigo: 'ERRO_INTERNO', mensagem: 'Não foi possível processar a solicitação agora.' },
+    })
+    expect(registrar).toHaveBeenCalledWith('Erro interno na API de análises', {
+      nome: 'Error',
+      mensagem: expect.stringContaining('[valor sensível omitido]'),
+    })
+    expect(JSON.stringify(registrar.mock.calls)).not.toContain('senha-real')
+    expect(JSON.stringify(registrar.mock.calls)).not.toContain('token-real')
+    expect(JSON.stringify(corpoInterno)).not.toContain('banco.example')
+
+    registrar.mockClear()
+    const apiConhecida = criarApiAnalises({
+      repositorio: criarCicloVidaAnaliseEmMemoria(),
+      fila: { publicar: vi.fn(async () => undefined) },
+    })
+
+    const respostaConhecida = await apiConhecida.elegibilidade(request({ url: 'https://gitlab.com/dono/repositorio' }))
+
+    expect(respostaConhecida.status).toBe(400)
+    expect(registrar).not.toHaveBeenCalled()
+    registrar.mockRestore()
+  })
 })

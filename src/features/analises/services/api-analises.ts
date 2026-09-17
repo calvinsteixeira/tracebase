@@ -14,6 +14,7 @@ import {
   mapearErroApiAnalises,
   obterRespostaErro,
   obterStatusErroApi,
+  registrarErroInternoApi,
   type CodigoErroApiAnalise,
 } from './erros-api-analises'
 
@@ -205,6 +206,7 @@ function respostaFalhaPublicacao(resumo: ResumoStatusAnalise) {
 
 function respostaErro(erro: unknown) {
   const codigo = mapearErroApiAnalises(erro)
+  if (codigo === 'ERRO_INTERNO') registrarErroInternoApi(erro)
   return respostaErroCodigo(codigo, obterStatusErroApi(codigo))
 }
 
