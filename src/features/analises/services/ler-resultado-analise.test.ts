@@ -21,9 +21,21 @@ const resumo = {
 
 describe('lerResultadoAnalise', () => {
   it('devolve a visão segura de um snapshot existente', async () => {
-    const obterResumoStatus = vi.fn().mockResolvedValue(resumo)
+    const obterResumoStatus = vi.fn().mockResolvedValue({ ...resumo, falha: { codigo: 'ERRO_INTERNO', categoria: 'transitoria', mensagem: 'token secreto', detalhes: { stack: 'stack secreto' }, ocorridoEm: resumo.atualizadoEm } })
 
-    await expect(lerResultadoAnalise(resumo.idPublico, { repositorio: { obterResumoStatus } })).resolves.toEqual(resumo)
+    await expect(lerResultadoAnalise(resumo.idPublico, { repositorio: { obterResumoStatus } })).resolves.toEqual({
+      idPublico: resumo.idPublico,
+      repositorio: { proprietario: 'dono', nome: 'projeto' },
+      referencia: 'main',
+      commitSha: resumo.commitSha,
+      estado: 'concluido',
+      falhaCodigo: 'ERRO_INTERNO',
+      atualizadoEm: resumo.atualizadoEm,
+      contagens: resumo.contagens,
+    })
+    const visao = await lerResultadoAnalise(resumo.idPublico, { repositorio: { obterResumoStatus } })
+    expect(JSON.stringify(visao)).not.toContain('token secreto')
+    expect(JSON.stringify(visao)).not.toContain('stack secreto')
     expect(obterResumoStatus).toHaveBeenCalledWith(expect.objectContaining({ idPublico: resumo.idPublico }))
   })
 
