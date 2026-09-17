@@ -19,6 +19,7 @@ import { obterChaveMensagemErro } from '../services/mensagens-erros-analise'
 import { AnaliseAtual } from './analise-atual'
 import { AnalisesRecentes } from './analises-recentes'
 import { NovaAnaliseFormulario } from './nova-analise-formulario'
+import { PainelVisaoGeral } from './painel-visao-geral'
 
 export function AcompanhamentoAnalises() {
   const queryClient = useQueryClient()
@@ -76,24 +77,28 @@ export function AcompanhamentoAnalises() {
   return (
     <div className="relative w-full max-w-6xl">
       <div aria-hidden="true" className="pointer-events-none absolute -top-24 right-0 size-72 rounded-full bg-primary/10 blur-3xl" />
-      <NovaAnaliseFormulario
-        onIniciar={(url) => {
-          setErroInicio(null)
-          criacao.mutate(url)
-        }}
-        iniciando={criacao.isPending}
-        erroInicio={erroInicio}
-      />
-
-      {idAtual && (
-        <AnaliseAtual
-          snapshotId={idAtual}
-          onTentarNovamente={(tentativa) => retry.mutate({ snapshotId: idAtual, tentativa })}
-          tentandoNovamente={tentandoIds.has(idAtual)}
-          erroNovaTentativa={errosRetry[idAtual]}
-          onAnuncio={setAnuncio}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.04fr)_minmax(360px,.96fr)]">
+        <NovaAnaliseFormulario
+          onIniciar={(url) => {
+            setErroInicio(null)
+            criacao.mutate(url)
+          }}
+          iniciando={criacao.isPending}
+          erroInicio={erroInicio}
         />
-      )}
+
+        {idAtual ? (
+          <AnaliseAtual
+            snapshotId={idAtual}
+            onTentarNovamente={(tentativa) => retry.mutate({ snapshotId: idAtual, tentativa })}
+            tentandoNovamente={tentandoIds.has(idAtual)}
+            erroNovaTentativa={errosRetry[idAtual]}
+            onAnuncio={setAnuncio}
+          />
+        ) : (
+          <PainelVisaoGeral />
+        )}
+      </div>
 
       <AnalisesRecentes
         ids={idsRecentes ?? []}

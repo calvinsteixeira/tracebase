@@ -110,7 +110,7 @@ export function AnalisesRecentes({ ids, idAtual, onTentarNovamente, tentandoIds,
       ) : idsVisiveis.length === 0 ? (
         <p className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">{t('recentes.vazia')}</p>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           {consultas.map((consulta, indice) => {
             const erro = consulta.error instanceof ErroApiAnaliseCliente ? consulta.error : null
             const resumo = consulta.data as ResumoStatusAnaliseCliente | undefined

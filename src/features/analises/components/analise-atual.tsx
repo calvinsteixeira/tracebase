@@ -39,7 +39,7 @@ export function AnaliseAtual({ snapshotId, onTentarNovamente, tentandoNovamente,
   }, [codigoErroAtualizacao, onAnuncio, t, tErros])
 
   return (
-    <section aria-labelledby="analise-atual-titulo" className="mt-16">
+    <section aria-labelledby="analise-atual-titulo" className="mt-0">
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('acompanhamento')}</p>

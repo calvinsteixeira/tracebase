@@ -16,7 +16,17 @@
     "iniciar": "Iniciar análise",
     "iniciando": "Iniciando análise...",
     "novo": "Verificar outro repositório",
-    "inicioFalhou": "Não foi possível iniciar a análise. Tente novamente."
+    "inicioFalhou": "Não foi possível iniciar a análise. Tente novamente.",
+    "visaoGeral": {
+      "eyebrow": "Seu espaço de análise",
+      "titulo": "Uma leitura clara do seu repositório.",
+      "descricao": "Comece com uma URL pública. Você revisa os limites antes de iniciar e acompanha o processamento em um único lugar.",
+      "etapas": {
+        "conectar": "Conecte um repositório público",
+        "verificar": "Revise os dados encontrados",
+        "acompanhar": "Acompanhe o processamento"
+      }
+    }
   },
   "elegibilidade": {
     "status": {
