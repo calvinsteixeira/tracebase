@@ -40,5 +40,4 @@ const resultadosSeguros = new Set<ResultadoProcessamentoAnalise['tipo']>([
   'inexistente',
   'estado_incompativel',
   'falha_registrada',
-  'lease_perdido',
 ])

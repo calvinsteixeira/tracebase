@@ -57,6 +57,14 @@ describe('consumidor privado de análises', () => {
     await expect(processarMensagemFilaAnalises(mensagem)).resolves.toBeUndefined()
   })
 
+  it('relança lease perdido para permitir a reentrega pela fila', async () => {
+    processar.mockResolvedValueOnce({ tipo: 'lease_perdido' })
+
+    await expect(processarMensagemFilaAnalises(mensagem)).rejects.toThrow(
+      'O processamento perdeu o lease e deve ser reentregue.',
+    )
+  })
+
   it('relança falha inesperada para permitir a reentrega', async () => {
     const falha = new Error('falha transitória de infraestrutura')
     processar.mockRejectedValueOnce(falha)
