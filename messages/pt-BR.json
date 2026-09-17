@@ -60,6 +60,42 @@
       "descricao": "Revise o snapshot encontrado e avance quando estiver pronto para iniciar o processamento."
     }
   },
+  "resultadoAnalise": {
+    "eyebrow": "Resultado da análise",
+    "commitCompleto": "Commit completo: {commit}",
+    "status": {
+      "concluida": "Análise concluída",
+      "aguardando": "Aguardando processamento",
+      "processando": "Análise em andamento",
+      "falha": "Análise interrompida"
+    },
+    "visualizacao": {
+      "eyebrow": "Visão do repositório",
+      "titulo": "Arquitetura do código",
+      "pronta": "A estrutura deste repositório está pronta para ser explorada.",
+      "relacoesEncontradas": "{quantidade} relações internas foram encontradas nesta análise.",
+      "vaziaTitulo": "Nenhuma relação interna encontrada",
+      "vaziaDescricao": "Este snapshot não possui conexões entre arquivos para apresentar aqui."
+    },
+    "detalhe": {
+      "eyebrow": "Contexto",
+      "titulo": "Detalhes do snapshot",
+      "descricao": "Este painel reúne um resumo seguro da versão analisada. Selecione um item quando estiver disponível."
+    },
+    "resumo": {
+      "arquivos": "Arquivos",
+      "simbolos": "Símbolos",
+      "exportacoes": "Exports",
+      "diagnosticos": "Diagnósticos",
+      "atualizado": "Atualizado em"
+    },
+    "indisponivel": {
+      "andamentoTitulo": "A análise ainda está em andamento",
+      "andamentoDescricao": "Volte ao acompanhamento para consultar o estado mais recente quando o processamento avançar.",
+      "falhaTitulo": "Não foi possível concluir esta análise"
+    },
+    "voltarAcompanhamento": "Voltar ao acompanhamento"
+  },
   "elegibilidade": {
     "status": {
       "elegivel": "Repositório elegível para análise",

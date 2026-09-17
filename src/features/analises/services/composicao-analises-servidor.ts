@@ -8,9 +8,11 @@ import { criarFilaVercelAnalises } from './fila-vercel-analises'
 import type { FilaDeAnalises } from './fila-analises'
 import { criarCicloVidaAnalisePostgres } from './persistencia/ciclo-vida-analise-postgres'
 import { criarRepositorioPersistenciaIndicePostgres } from './persistencia/persistencia-indice-postgres'
+import type { RepositorioApiAnalises } from './persistencia/repositorio-api-analises'
 
 let api: ReturnType<typeof criarApiAnalises> | undefined
 let consumidor: ReturnType<typeof criarConsumidorProcessamentoAnalise> | undefined
+let repositorioServidor: RepositorioApiAnalises | undefined
 
 export function selecionarFilaAnalises({
   emVercel,
@@ -28,6 +30,7 @@ export function obterApiAnalisesServidor() {
   if (api) return api
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const cicloVida = criarCicloVidaAnalisePostgres(pool)
+  repositorioServidor = cicloVida
   const persistencia = criarRepositorioPersistenciaIndicePostgres(pool)
   const fonte = criarFonteRepositorioGitHub()
   consumidor = criarConsumidorProcessamentoAnalise({ cicloVida, persistencia, fonte })
@@ -45,6 +48,12 @@ export function obterApiAnalisesServidor() {
     limiteDemoradaMs: obterLimiteAnaliseDemoradaMs(),
   })
   return api
+}
+
+export function obterRepositorioApiAnalisesServidor() {
+  obterApiAnalisesServidor()
+  if (!repositorioServidor) throw new Error('Repositório de análises não foi configurado.')
+  return repositorioServidor
 }
 
 export function obterConsumidorProcessamentoAnaliseServidor() {

@@ -1,0 +1,38 @@
+import { describe, expect, it, vi } from 'vitest'
+
+import { lerResultadoAnalise } from './ler-resultado-analise'
+
+const resumo = {
+  idPublico: '11111111-1111-4111-8111-111111111111',
+  repositorio: { url: 'https://github.com/dono/projeto', proprietario: 'dono', nome: 'projeto' },
+  commitSha: 'a'.repeat(40),
+  referencia: 'main',
+  estado: 'concluido' as const,
+  etapa: 'persistencia' as const,
+  tentativa: 1,
+  tentativaIniciadaEm: '2026-09-17T10:00:00.000Z',
+  ultimaAtividadeEm: '2026-09-17T10:01:00.000Z',
+  atualizadoEm: '2026-09-17T10:01:00.000Z',
+  finalizadoEm: '2026-09-17T10:01:00.000Z',
+  demorada: false,
+  falha: null,
+  contagens: { arquivos: 2, simbolos: 1, exportacoes: 1, relacoesImportacao: 0, diagnosticos: 0 },
+}
+
+describe('lerResultadoAnalise', () => {
+  it('devolve a visão segura de um snapshot existente', async () => {
+    const obterResumoStatus = vi.fn().mockResolvedValue(resumo)
+
+    await expect(lerResultadoAnalise(resumo.idPublico, { repositorio: { obterResumoStatus } })).resolves.toEqual(resumo)
+    expect(obterResumoStatus).toHaveBeenCalledWith(expect.objectContaining({ idPublico: resumo.idPublico }))
+  })
+
+  it('devolve nulo para identificador inválido ou snapshot inexistente', async () => {
+    const obterResumoStatus = vi.fn().mockResolvedValue(null)
+    const dependencias = { repositorio: { obterResumoStatus } }
+
+    await expect(lerResultadoAnalise('nao-e-uuid', dependencias)).resolves.toBeNull()
+    await expect(lerResultadoAnalise(resumo.idPublico, dependencias)).resolves.toBeNull()
+    expect(obterResumoStatus).toHaveBeenCalledTimes(1)
+  })
+})
