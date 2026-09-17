@@ -357,6 +357,8 @@ O PostgreSQL é o único banco de dados oficial do Tracebase. Durante o desenvol
 - O workflow deve consumir os Secrets da Vercel sem escrever valores, IDs ou tokens no YAML, no repositório ou nos logs.
 - Migrations de produção continuam proibidas no CD, nos builds e nos previews; o job de deploy apenas prepara, compila e publica o artefato da aplicação.
 - Os previews continuam sob responsabilidade da integração Git da Vercel enquanto essa integração não for desativada em uma mudança posterior.
+- Em produção, o processamento assíncrono usa Vercel Queues no tópico `analises`, publicando somente `{ snapshotId, tentativa }` com a chave `analise:{snapshotId}:{tentativa}`; a publicação fica restrita ao adapter de infraestrutura e o callback usa `handleCallback` apenas na rota privada da fila.
+- No ambiente local, a composição deve continuar usando `criarFilaLocalAnalises` e o executor existente, sem exigir credenciais ou acesso à Vercel.
 
 ## API assíncrona e idempotência HTTP
 

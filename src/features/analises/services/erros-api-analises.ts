@@ -27,6 +27,16 @@ export function mapearErroApiAnalises(erro: unknown) {
   return mapearErroFonteGitHub(erro) ?? 'ERRO_INTERNO'
 }
 
+export function registrarErroInternoApi(erro: unknown) {
+  const nome = erro instanceof Error ? erro.name : 'ErroDesconhecido'
+  const mensagem = erro instanceof Error ? erro.message : String(erro)
+
+  console.error('Erro interno na API de análises', {
+    nome: sanitizarDetalheErro(nome),
+    mensagem: sanitizarDetalheErro(mensagem),
+  })
+}
+
 export function obterRespostaErro(codigo: CodigoErroApiAnalise) {
   const mensagens: Record<CodigoErroApiAnalise, string> = {
     URL_INVALIDA: 'Informe uma URL canônica de repositório público do GitHub.',
@@ -51,4 +61,11 @@ export function obterStatusErroApi(codigo: CodigoErroApiAnalise) {
   if (codigo === 'LIMITE_GITHUB') return 429
   if (codigo === 'PUBLICACAO_RECUSADA' || codigo === 'GITHUB_INDISPONIVEL') return 503
   return 500
+}
+
+function sanitizarDetalheErro(valor: string) {
+  return valor
+    .replace(/(?:database_url|github_token|vercel_token|authorization|password|passwd|secret|token)\s*[:=]\s*\S+/gi, '[valor sensível omitido]')
+    .replace(/(?:postgres(?:ql)?|mysql|mongodb):\/\/\S+/gi, '[conexão omitida]')
+    .replace(/bearer\s+\S+/gi, 'Bearer [valor omitido]')
 }
