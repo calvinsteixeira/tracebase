@@ -32,12 +32,14 @@ describe('AcompanhamentoAnalises', () => {
     renderTela()
 
     await verificar(user)
+    expect(screen.getByRole('button', { name: 'Elegibilidade' })).toHaveAttribute('aria-current', 'step')
     expect(screen.getByRole('button', { name: 'Iniciar análise' })).toBeInTheDocument()
 
     mockFetch(resposta({ ...elegibilidade(), status: 'nao-elegivel', detalhe: { criterio: 'sem-arquivos', encontrado: 0, maximo: null }, quantidadeArquivosElegiveis: 0 }))
+    await user.click(screen.getByRole('button', { name: 'Conectar' }))
     await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
     expect(await screen.findByText('Nenhum arquivo JavaScript ou TypeScript elegível foi encontrado.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Iniciar análise' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Iniciar análise' })).toBeDisabled()
   })
 
   it('envia URL e UUID, impedindo uma segunda submissão enquanto inicia', async () => {
@@ -125,12 +127,27 @@ describe('AcompanhamentoAnalises', () => {
 
     expect(await screen.findByText('Esta análise está levando mais tempo que o esperado, mas continua em andamento.')).toBeInTheDocument()
     expect(screen.getByText('Processando')).toBeInTheDocument()
+    expect(screen.getByText('Salvando resultado')).toBeInTheDocument()
     expect(screen.getByText('Arquivos')).toBeInTheDocument()
     expect(screen.getByText('Símbolos')).toBeInTheDocument()
     expect(screen.getByText('Exports')).toBeInTheDocument()
     expect(screen.getByText('Relações')).toBeInTheDocument()
     expect(screen.getByText('Diagnósticos')).toBeInTheDocument()
     expect(screen.queryByText('Falha')).not.toBeInTheDocument()
+  })
+
+  it('mostra a mensagem final sem expor a última etapa técnica quando a análise está concluída', () => {
+    render(
+      <NextIntlClientProvider locale="pt-BR" timeZone="America/Araguaina" messages={messages}>
+        <CartaoAcompanhamentoAnalise
+          resumo={resumo({ estado: 'concluido', etapa: 'persistencia', contagens: contagens() })}
+        />
+      </NextIntlClientProvider>,
+    )
+
+    expect(screen.getByText('Análise concluída')).toBeInTheDocument()
+    expect(screen.queryByText('Salvando resultado')).not.toBeInTheDocument()
+    expect(screen.getByText('Arquivos')).toBeInTheDocument()
   })
 
   it('mantém a falha no card e envia tentativa esperada com novo requestId', async () => {
@@ -275,6 +292,7 @@ describe('AcompanhamentoAnalises', () => {
     renderTela()
     await verificar(user)
     await user.click(screen.getByRole('button', { name: 'Iniciar análise' }))
+    await user.click(screen.getByRole('button', { name: 'Ver histórico' }))
     const cartoes = await screen.findAllByRole('article')
     expect(cartoes).toHaveLength(2)
 
@@ -300,6 +318,7 @@ describe('AcompanhamentoAnalises', () => {
     }))
 
     renderTela()
+    await user.click(screen.getByRole('button', { name: 'Ver histórico' }))
     const cartoes = await screen.findAllByRole('article')
     await user.click(within(cartoes[0]).getByRole('button', { name: 'Tentar novamente' }))
     await user.click(within(cartoes[1]).getByRole('button', { name: 'Tentar novamente' }))
@@ -333,6 +352,7 @@ describe('AcompanhamentoAnalises', () => {
     window.localStorage.setItem('tracebase:analises-recentes:v1', JSON.stringify([retryId]))
     mockFetch(resposta({}, 404))
     renderTela()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Ver histórico' }))
 
     await waitFor(() => expect(screen.getByText('Nenhuma análise recente neste navegador.')).toBeInTheDocument())
     expect(window.localStorage.getItem('tracebase:analises-recentes:v1')).toBe('[]')
@@ -342,6 +362,7 @@ describe('AcompanhamentoAnalises', () => {
     window.localStorage.setItem('tracebase:analises-recentes:v1', JSON.stringify([id]))
     mockFetch(resposta({ ...resumo({ estado: 'concluido', contagens: contagens() }), leaseId: 'segredo', stack: 'stack', interno: '{json}' }))
     renderTela()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Ver histórico' }))
 
     expect(await screen.findByText('Concluída')).toBeInTheDocument()
     expect(screen.queryByText('segredo')).not.toBeInTheDocument()
@@ -376,6 +397,7 @@ function renderTelaElement() {
 async function verificar(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByRole('textbox', { name: 'URL do repositório GitHub' }), url)
   await user.click(screen.getByRole('button', { name: 'Verificar repositório' }))
+  await screen.findByRole('button', { name: 'Iniciar análise' })
 }
 
 function verificarSemUsuario() {

@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, CircleAlert, Clock3, LoaderCircle, RefreshCw } from 'lucide-react'
+import { CheckCircle2, CircleAlert, Clock3, GitBranch, GitCommitHorizontal, LoaderCircle, RefreshCw } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 
 import type { ErroApiAnaliseCliente, ResumoStatusAnaliseCliente } from '../services/api-analises-cliente'
@@ -31,7 +31,7 @@ export function CartaoAcompanhamentoAnalise({
 
   if (!resumo) {
     return (
-      <section aria-labelledby="cartao-analise-titulo" className="rounded-3xl border border-border bg-card p-6 shadow-[0_18px_55px_-36px_var(--primary)] sm:p-7">
+      <section aria-labelledby="cartao-analise-titulo" className="rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-48px_var(--foreground)]">
         <h3 id="cartao-analise-titulo" className="text-lg font-semibold">{t('carregando')}</h3>
         {carregando && <p className="mt-2 text-sm text-muted-foreground">{t('consultando')}</p>}
         {erroAtualizacao && (
@@ -44,40 +44,38 @@ export function CartaoAcompanhamentoAnalise({
   const estado = obterEstadoVisual(resumo.estado)
   const IconeEstado = estado.icone
   const tituloId = `analise-${resumo.idPublico}-titulo`
+  const etapaAtual = resumo.estado === 'concluido'
+    ? t('etapaConcluida')
+    : resumo.etapa
+      ? t(`etapas.${resumo.etapa}`)
+      : t('aguardandoEtapa')
 
   return (
-    <article aria-labelledby={tituloId} className="rounded-3xl border border-border bg-card p-6 shadow-[0_18px_55px_-36px_var(--primary)] sm:p-7">
+    <article aria-labelledby={tituloId} className="group rounded-2xl border border-border/80 bg-card p-5 shadow-[0_20px_60px_-48px_var(--foreground)] transition hover:border-border sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t('analise')}</p>
-          <h3 id={tituloId} className="mt-1 break-words text-xl font-semibold">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t('analise')}</p>
+          <h3 id={tituloId} className="mt-1 break-words text-xl font-semibold tracking-[-0.025em]">
             {resumo.repositorio.proprietario}/{resumo.repositorio.nome}
           </h3>
         </div>
-        <div className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium ${estado.classes}`}>
+        <div className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${estado.classes}`}>
           <IconeEstado aria-hidden="true" className={`size-4 ${resumo.estado === 'processando' ? 'motion-safe:animate-spin' : ''}`} />
           {t(`estados.${resumo.estado}`)}
         </div>
       </div>
 
-      <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-        <ItemResumo label={t('branch')} value={resumo.referencia} />
+      <dl className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-y border-border/70 py-4 text-sm">
+        <ItemResumo icone={GitBranch} label={t('branch')} value={resumo.referencia} />
+        <ItemResumo icone={GitCommitHorizontal} label={t('commit')} value={resumo.commitSha.slice(0, 7)} valueLabel={t('commitCompleto', { commit: resumo.commitSha })} mono />
         <ItemResumo label={t('tentativa')} value={String(resumo.tentativa)} />
-        <ItemResumo
-          label={t('commit')}
-          value={resumo.commitSha.slice(0, 7)}
-          valueLabel={t('commitCompleto', { commit: resumo.commitSha })}
-          mono
-        />
-        <ItemResumo
-          label={t('atualizadoEm')}
-          value={formatador.dateTime(new Date(resumo.atualizadoEm), { dateStyle: 'short', timeStyle: 'short' })}
-        />
+        <ItemResumo label={t('atualizadoEm')} value={formatador.dateTime(new Date(resumo.atualizadoEm), { dateStyle: 'short', timeStyle: 'short' })} />
       </dl>
 
-      <div className="mt-6 rounded-xl border border-border/70 bg-muted/35 p-4">
-        <p className="text-sm text-muted-foreground">{t('etapa')}</p>
-        <p className="mt-1 font-medium">{resumo.etapa ? t(`etapas.${resumo.etapa}`) : t('aguardandoEtapa')}</p>
+      <div className="mt-5 rounded-xl bg-muted/55 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('etapa')}</p>
+        <p className="mt-1 text-sm font-semibold">{etapaAtual}</p>
+        {(resumo.estado === 'processando' || resumo.estado === 'aguardando') && <div aria-hidden="true" className="mt-3 h-1.5 overflow-hidden rounded-full bg-border"><div className="h-full w-2/5 rounded-full bg-primary motion-safe:animate-pulse" /></div>}
       </div>
 
       {resumo.demorada && resumo.estado === 'processando' && (
@@ -122,11 +120,12 @@ export function CartaoAcompanhamentoAnalise({
   )
 }
 
-function ItemResumo({ label, value, valueLabel, mono = false }: { label: string; value: string; valueLabel?: string; mono?: boolean }) {
+function ItemResumo({ label, value, valueLabel, mono = false, icone: Icone }: { label: string; value: string; valueLabel?: string; mono?: boolean; icone?: typeof GitBranch }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border/70 bg-muted/35 p-4">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className={`mt-1 break-words font-medium ${mono ? 'font-mono text-sm' : ''}`} aria-label={valueLabel} title={valueLabel}>
+    <div className="flex min-w-0 items-center gap-2">
+      {Icone && <Icone aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />}
+      <dt className="sr-only">{label}</dt>
+      <dd className={`break-words font-medium text-muted-foreground ${mono ? 'font-mono text-xs' : 'text-xs'}`} aria-label={valueLabel ?? `${label}: ${value}`} title={valueLabel}>
         {value}
       </dd>
     </div>
@@ -139,9 +138,9 @@ function Contagens({ resumo }: { resumo: ResumoStatusAnaliseCliente }) {
   if (!contagens) return null
 
   return (
-    <div className="mt-6">
-      <h4 className="text-sm font-semibold">{t('contagens.titulo')}</h4>
-      <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <div className="mt-5">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('contagens.titulo')}</h4>
+      <dl className="mt-3 grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-xl border border-border sm:grid-cols-5 sm:divide-y-0">
         <Contagem label={t('contagens.arquivos')} value={contagens.arquivos} />
         <Contagem label={t('contagens.simbolos')} value={contagens.simbolos} />
         <Contagem label={t('contagens.exportacoes')} value={contagens.exportacoes} />
@@ -154,9 +153,9 @@ function Contagens({ resumo }: { resumo: ResumoStatusAnaliseCliente }) {
 
 function Contagem({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-muted/35 p-3">
+    <div className="bg-muted/25 p-3.5">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
+      <dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd>
     </div>
   )
 }
