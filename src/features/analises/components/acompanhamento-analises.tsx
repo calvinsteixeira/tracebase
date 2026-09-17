@@ -25,6 +25,8 @@ import { type EtapaFluxoAnalise, NavegacaoFluxoAnalise } from './navegacao-fluxo
 import { NovaAnaliseFormulario } from './nova-analise-formulario'
 import { ResultadoElegibilidade } from './resumo-repositorio'
 
+const UUID_PUBLICO = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 export function AcompanhamentoAnalises() {
   const queryClient = useQueryClient()
   const tErros = useTranslations('erros')
@@ -40,7 +42,20 @@ export function AcompanhamentoAnalises() {
   const [mostrandoHistorico, setMostrandoHistorico] = useState(false)
 
   useEffect(() => {
-    queueMicrotask(() => setIdsRecentes(lerAnalisesRecentes()))
+    queueMicrotask(() => {
+      const recentes = lerAnalisesRecentes()
+      const analiseInformada = new URLSearchParams(window.location.search).get('analise')
+
+      if (!analiseInformada || !UUID_PUBLICO.test(analiseInformada)) {
+        setIdsRecentes(recentes)
+        return
+      }
+
+      setIdAtual(analiseInformada)
+      adicionarAnaliseRecente(analiseInformada)
+      setIdsRecentes([analiseInformada, ...recentes.filter((id) => id !== analiseInformada)].slice(0, 10))
+      setEtapaAtual('acompanhar')
+    })
   }, [])
 
   const criacao = useMutation({
