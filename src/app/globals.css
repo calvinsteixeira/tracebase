@@ -86,6 +86,9 @@
   --graph-focus: rgb(14 116 144);
   --graph-context: rgb(226 232 240);
   --graph-edge: rgb(148 163 184);
+  --graph-node-text: rgb(15 23 42);
+  --graph-selected-text: rgb(240 253 250);
+  --graph-label-background: rgb(255 255 255);
 }
 
 .dark {
@@ -124,6 +127,9 @@
   --graph-focus: rgb(74 222 128);
   --graph-context: rgb(51 65 85);
   --graph-edge: rgb(100 116 139);
+  --graph-node-text: rgb(241 245 249);
+  --graph-selected-text: rgb(15 23 42);
+  --graph-label-background: rgb(30 41 59);
 }
 
 @layer base {

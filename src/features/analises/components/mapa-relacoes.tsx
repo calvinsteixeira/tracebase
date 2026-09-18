@@ -16,7 +16,7 @@ export function MapaRelacoes({ relacoes, onSelecionar }: MapaRelacoesProps) {
   const t = useTranslations('resultadoAnalise.exploracao')
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
-  const [carregando, setCarregando] = useState(true)
+  const [estado, setEstado] = useState<'carregando' | 'pronto' | 'erro'>('carregando')
 
   useEffect(() => {
     let ativo = true
@@ -27,21 +27,25 @@ export function MapaRelacoes({ relacoes, onSelecionar }: MapaRelacoesProps) {
       const foco = style.getPropertyValue('--graph-focus').trim()
       const contexto = style.getPropertyValue('--graph-context').trim()
       const linha = style.getPropertyValue('--graph-edge').trim()
+      const textoNo = style.getPropertyValue('--graph-node-text').trim()
+      const textoSelecionado = style.getPropertyValue('--graph-selected-text').trim()
+      const fundoLabel = style.getPropertyValue('--graph-label-background').trim()
       const elementos = criarElementos(relacoes)
       const instancia = cytoscape({
         container,
         elements: elementos,
         layout: { name: 'preset' },
         style: [
-          { selector: 'node', style: { label: 'data(label)', 'text-wrap': 'ellipsis', 'text-max-width': '150px', 'text-valign': 'center', 'text-halign': 'center', color: style.getPropertyValue('--foreground').trim(), 'font-size': 11, 'background-color': contexto, width: 42, height: 42, 'border-width': 1, 'border-color': linha } },
-          { selector: '.selecionado', style: { 'background-color': foco, 'border-color': foco, color: style.getPropertyValue('--primary-foreground').trim(), width: 54, height: 54 } },
-          { selector: 'edge', style: { width: 2, 'line-color': linha, 'target-arrow-color': linha, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', label: 'data(label)', color: style.getPropertyValue('--muted-foreground').trim(), 'font-size': 10, 'text-background-color': style.getPropertyValue('--card').trim(), 'text-background-opacity': 1 } },
+          { selector: 'node', style: { label: 'data(label)', 'text-wrap': 'ellipsis', 'text-max-width': '150px', 'text-valign': 'center', 'text-halign': 'center', color: textoNo, 'font-size': 11, 'background-color': contexto, width: 42, height: 42, 'border-width': 1, 'border-color': linha } },
+          { selector: '.selecionado', style: { 'background-color': foco, 'border-color': foco, color: textoSelecionado, width: 54, height: 54 } },
+          { selector: 'edge', style: { width: 2, 'line-color': linha, 'target-arrow-color': linha, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', label: 'data(label)', color: textoNo, 'font-size': 10, 'text-background-color': fundoLabel, 'text-background-opacity': 1 } },
         ],
       })
+      instancia.fit(undefined, 40)
       instancia.on('tap', 'node', (evento) => onSelecionar(evento.target.data('caminho') as string))
       cyRef.current = instancia
-      setCarregando(false)
-    }).catch(() => setCarregando(false))
+      setEstado('pronto')
+    }).catch(() => setEstado('erro'))
 
     return () => {
       ativo = false
@@ -58,13 +62,14 @@ export function MapaRelacoes({ relacoes, onSelecionar }: MapaRelacoesProps) {
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-background/40">
-      <div ref={containerRef} className="h-[22rem] w-full [--graph-edge:var(--border)] [--graph-focus:var(--primary)] [--graph-context:var(--muted)]" aria-label={t('mapa')} role="img" />
-      {carregando ? <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/80 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />{t('carregandoRelacoes')}</div> : null}
-      <div className="absolute right-3 top-3 flex gap-1 rounded-xl border border-border bg-card/90 p-1 shadow-sm">
+      <div ref={containerRef} className="h-[22rem] w-full" aria-label={t('mapa')} role="img" />
+      {estado === 'carregando' ? <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/80 text-sm text-muted-foreground" role="status"><LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />{t('carregandoRelacoes')}</div> : null}
+      {estado === 'erro' ? <div className="absolute inset-0 flex items-center justify-center bg-background/95 p-6 text-center text-sm text-muted-foreground" role="alert">{t('erroMapa')}</div> : null}
+      {estado === 'pronto' ? <div className="absolute right-3 top-3 flex gap-1 rounded-xl border border-border bg-card/90 p-1 shadow-sm">
         <button type="button" onClick={() => ajustarZoom(0.2)} aria-label={t('aumentarZoom')} className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Plus aria-hidden="true" className="size-4" /></button>
         <button type="button" onClick={() => ajustarZoom(-0.2)} aria-label={t('reduzirZoom')} className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Minus aria-hidden="true" className="size-4" /></button>
         <button type="button" onClick={() => cyRef.current?.fit(undefined, 24)} aria-label={t('enquadrarRelacoes')} className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Scan aria-hidden="true" className="size-4" /></button>
-      </div>
+      </div> : null}
     </div>
   )
 }

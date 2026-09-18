@@ -12,11 +12,12 @@ interface NavegadorArquivosProps {
   isError: boolean
   onAbrirPasta: (caminho: string) => void
   onAbrirArquivo: (caminho: string) => void
+  arquivoSelecionado: string | null
   onVoltar: () => void
   onTentarNovamente: () => void
 }
 
-export function NavegadorArquivos({ arvore, caminho, isLoading, isError, onAbrirPasta, onAbrirArquivo, onVoltar, onTentarNovamente }: NavegadorArquivosProps) {
+export function NavegadorArquivos({ arvore, caminho, arquivoSelecionado, isLoading, isError, onAbrirPasta, onAbrirArquivo, onVoltar, onTentarNovamente }: NavegadorArquivosProps) {
   const t = useTranslations('resultadoAnalise.exploracao')
 
   return (
@@ -38,21 +39,22 @@ export function NavegadorArquivos({ arvore, caminho, isLoading, isError, onAbrir
         {isLoading ? <div className="flex min-h-56 items-center justify-center gap-3 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-5 animate-spin motion-reduce:animate-none" />{t('carregandoArquivos')}</div> : null}
         {isError ? <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center"><p className="text-sm text-muted-foreground">{t('erroArquivos')}</p><button type="button" onClick={onTentarNovamente} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><RotateCw aria-hidden="true" className="size-4" />{t('tentarNovamente')}</button></div> : null}
         {!isLoading && !isError && arvore && arvore.itens.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">{t('pastaVazia')}</p> : null}
-        {!isLoading && !isError && arvore && arvore.itens.length > 0 ? <ul className="space-y-1" aria-label={t('arquivos')}>{arvore.itens.map((item) => <Item key={`${item.tipo}:${item.caminho}`} item={item} onAbrirPasta={onAbrirPasta} onAbrirArquivo={onAbrirArquivo} t={t} />)}</ul> : null}
+        {!isLoading && !isError && arvore && arvore.itens.length > 0 ? <ul className="space-y-1" aria-label={t('arquivos')}>{arvore.itens.map((item) => <Item key={`${item.tipo}:${item.caminho}`} item={item} arquivoSelecionado={arquivoSelecionado} onAbrirPasta={onAbrirPasta} onAbrirArquivo={onAbrirArquivo} t={t} />)}</ul> : null}
       </div>
     </section>
   )
 }
 
-function Item({ item, onAbrirPasta, onAbrirArquivo, t }: { item: ItemArvoreAnalise; onAbrirPasta: (caminho: string) => void; onAbrirArquivo: (caminho: string) => void; t: (key: string, values?: Record<string, string | number>) => string }) {
+function Item({ item, arquivoSelecionado, onAbrirPasta, onAbrirArquivo, t }: { item: ItemArvoreAnalise; arquivoSelecionado: string | null; onAbrirPasta: (caminho: string) => void; onAbrirArquivo: (caminho: string) => void; t: (key: string, values?: Record<string, string | number>) => string }) {
   const pasta = item.tipo === 'pasta'
+  const selecionado = !pasta && arquivoSelecionado === item.caminho
   return (
     <li>
-      <button type="button" onClick={() => pasta ? onAbrirPasta(item.caminho) : onAbrirArquivo(item.caminho)} className="group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <button type="button" aria-current={selecionado ? 'page' : undefined} onClick={() => pasta ? onAbrirPasta(item.caminho) : onAbrirArquivo(item.caminho)} className={`group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selecionado ? 'bg-primary/10 text-primary' : ''}`}>
         {pasta ? <Folder aria-hidden="true" className="size-4 shrink-0 text-primary" /> : <FileCode2 aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />}
         <span className="min-w-0 flex-1 truncate font-mono text-[0.8rem]">{item.nome}</span>
         {pasta ? <span className="text-xs tabular-nums text-muted-foreground">{item.quantidadeArquivos}</span> : null}
-        <span className="sr-only">{pasta ? t('abrirPasta', { nome: item.nome }) : t('abrirArquivo', { nome: item.nome })}</span>
+        <span className="sr-only">{selecionado ? `${t('arquivoSelecionado')}. ` : ''}{pasta ? t('abrirPasta', { nome: item.nome }) : t('abrirArquivo', { nome: item.nome })}</span>
       </button>
     </li>
   )

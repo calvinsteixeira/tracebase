@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowDownLeft, ArrowUpRight, FileWarning, LoaderCircle } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, FileWarning, LoaderCircle, RotateCw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import type { RelacaoArquivoConsolidada, RelacoesArquivo } from '../services/exploracao-analise'
@@ -14,13 +14,14 @@ interface PainelRelacoesProps {
   isError: boolean
   erro?: unknown
   onSelecionar: (caminho: string) => void
+  onTentarNovamente: () => void
 }
 
-export function PainelRelacoes({ arquivo, relacoes, isLoading, isError, erro, onSelecionar }: PainelRelacoesProps) {
+export function PainelRelacoes({ arquivo, relacoes, isLoading, isError, erro, onSelecionar, onTentarNovamente }: PainelRelacoesProps) {
   const t = useTranslations('resultadoAnalise.exploracao')
   if (!arquivo) return <section aria-labelledby="relacoes-titulo" className="flex min-h-[32rem] items-center justify-center rounded-3xl border border-dashed border-border bg-card/50 p-8 text-center"><div className="max-w-sm"><p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('relacoes')}</p><h2 id="relacoes-titulo" className="mt-3 text-xl font-semibold">{t('semSelecao')}</h2></div></section>
   if (isLoading) return <section aria-labelledby="relacoes-titulo" className="flex min-h-[32rem] items-center justify-center rounded-3xl border border-border bg-card p-8"><div className="flex items-center gap-3 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-5 animate-spin motion-reduce:animate-none" />{t('carregandoRelacoes')}</div></section>
-  if (isError || !relacoes) return <section aria-labelledby="relacoes-titulo" className="flex min-h-[32rem] items-center justify-center rounded-3xl border border-border bg-card p-8 text-center"><div className="max-w-sm"><p id="relacoes-titulo" className="text-sm text-muted-foreground">{erro instanceof ErroExploracaoAnaliseCliente && erro.codigo === 'SNAPSHOT_NAO_ENCONTRADO' ? t('erroSnapshot') : t('erroRelacoes')}</p></div></section>
+  if (isError || !relacoes) return <section aria-labelledby="relacoes-titulo" className="flex min-h-[32rem] items-center justify-center rounded-3xl border border-border bg-card p-8 text-center"><div className="max-w-sm"><p id="relacoes-titulo" className="text-sm text-muted-foreground">{erro instanceof ErroExploracaoAnaliseCliente && erro.codigo === 'SNAPSHOT_NAO_ENCONTRADO' ? t('erroSnapshot') : t('erroRelacoes')}</p><button type="button" onClick={onTentarNovamente} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><RotateCw aria-hidden="true" className="size-4" />{t('tentarNovamente')}</button></div></section>
 
   const possuiRelacoes = relacoes.importa.length > 0 || relacoes.importadoPor.length > 0
   return (
@@ -30,7 +31,7 @@ export function PainelRelacoes({ arquivo, relacoes, isLoading, isError, erro, on
         <h2 id="relacoes-titulo" className="mt-2 break-all font-mono text-xl font-semibold tracking-tight">{relacoes.arquivo.caminho}</h2>
       </div>
       {possuiRelacoes ? <>
-        <MapaRelacoes relacoes={relacoes} onSelecionar={onSelecionar} />
+        <MapaRelacoes key={relacoes.arquivo.caminho} relacoes={relacoes} onSelecionar={onSelecionar} />
         <p className="text-xs text-muted-foreground">{t('legenda')}: <span className="font-medium">{t('importadoPor')}</span> ← {t('arquivo')} → <span className="font-medium">{t('importa')}</span></p>
         <div className="grid gap-5 border-t border-border pt-5 lg:grid-cols-2">
           <ListaRelacoes titulo={t('importadoPor')} vazia={t('nenhumaEntrada')} icone={<ArrowDownLeft aria-hidden="true" className="size-4" />} relacoes={relacoes.importadoPor} onSelecionar={onSelecionar} t={t} />
