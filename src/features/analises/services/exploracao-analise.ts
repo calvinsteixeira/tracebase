@@ -33,13 +33,18 @@ export interface LinhasRelacoesArquivo {
 
 export interface RepositorioLeituraExploracao {
   obterArvoreSnapshotConcluido(snapshotId: string, escopo: string | null): Promise<ResultadoArvoreLeitura>
-  obterRelacoesArquivoSnapshotConcluido(snapshotId: string, caminho: string): Promise<LinhasRelacoesArquivo | null>
+  obterRelacoesArquivoSnapshotConcluido(snapshotId: string, caminho: string): Promise<ResultadoRelacoesLeitura>
 }
 
 export type ResultadoArvoreLeitura =
   | { tipo: 'encontrada'; arvore: ArvoreAnalise }
   | { tipo: 'snapshot_indisponivel' }
   | { tipo: 'caminho_inexistente' }
+
+export type ResultadoRelacoesLeitura =
+  | { tipo: 'encontrada'; relacoes: LinhasRelacoesArquivo }
+  | { tipo: 'snapshot_indisponivel' }
+  | { tipo: 'arquivo_inexistente' }
 
 export type CodigoErroExploracao =
   | 'SNAPSHOT_NAO_ENCONTRADO'

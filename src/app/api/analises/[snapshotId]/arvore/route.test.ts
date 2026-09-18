@@ -10,7 +10,7 @@ vi.mock('@/features/analises/services/composicao-exploracao-analise-servidor', (
 const id = '11111111-1111-4111-8111-111111111111'
 const repositorio: RepositorioLeituraExploracao = {
   obterArvoreSnapshotConcluido: async () => ({ tipo: 'encontrada', arvore: { escopo: 'src', itens: [{ tipo: 'pasta', caminho: 'src/lib', nome: 'lib', quantidadeArquivos: 1 }, { tipo: 'arquivo', caminho: 'src/a.ts', nome: 'a.ts', linguagem: 'typescript' }] } }),
-  obterRelacoesArquivoSnapshotConcluido: async () => null,
+  obterRelacoesArquivoSnapshotConcluido: async () => ({ tipo: 'snapshot_indisponivel' }),
 }
 
 describe('GET /api/analises/[snapshotId]/arvore', () => {

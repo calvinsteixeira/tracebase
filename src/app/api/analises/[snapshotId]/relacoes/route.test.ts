@@ -10,7 +10,7 @@ vi.mock('@/features/analises/services/composicao-exploracao-analise-servidor', (
 const id = '11111111-1111-4111-8111-111111111111'
 const repositorio: RepositorioLeituraExploracao = {
   obterArvoreSnapshotConcluido: async () => ({ tipo: 'encontrada', arvore: { escopo: null, itens: [] } }),
-  obterRelacoesArquivoSnapshotConcluido: async () => ({ arquivo: { caminho: 'src/a.ts', linguagem: 'typescript' }, importa: [{ caminho: 'src/b.ts', quantidadeImports: 2 }], importadoPor: [], limitacoes: [{ codigo: 'COMMONJS_NAO_SUPORTADO', categoria: 'limitacao' }] }),
+  obterRelacoesArquivoSnapshotConcluido: async () => ({ tipo: 'encontrada', relacoes: { arquivo: { caminho: 'src/a.ts', linguagem: 'typescript' }, importa: [{ caminho: 'src/b.ts', quantidadeImports: 2 }], importadoPor: [], limitacoes: [{ codigo: 'COMMONJS_NAO_SUPORTADO', categoria: 'limitacao' }] } }),
 }
 
 describe('GET /api/analises/[snapshotId]/relacoes', () => {
@@ -37,5 +37,25 @@ describe('GET /api/analises/[snapshotId]/relacoes', () => {
     const resposta = await GET(new Request('http://localhost/api/analises/invalido/relacoes?arquivo=src/a.ts'), { params: Promise.resolve({ snapshotId: 'invalido' }) })
     expect(resposta.status).toBe(400)
     expect((await resposta.json()).erro.codigo).toBe('REQUISICAO_INVALIDA')
+  })
+
+  it.each(['inexistente', 'aguardando', 'processando', 'falha'])('não expõe relações para snapshot %s', async () => {
+    vi.mocked(obterRepositorioExploracaoAnaliseServidor).mockReturnValue({
+      ...repositorio,
+      obterRelacoesArquivoSnapshotConcluido: async () => ({ tipo: 'snapshot_indisponivel' }),
+    })
+    const resposta = await GET(new Request(`http://localhost/api/analises/${id}/relacoes?arquivo=src/a.ts`), { params: Promise.resolve({ snapshotId: id }) })
+    expect(resposta.status).toBe(404)
+    expect((await resposta.json()).erro.codigo).toBe('SNAPSHOT_NAO_ENCONTRADO')
+  })
+
+  it('diferencia arquivo inexistente dentro de snapshot concluído', async () => {
+    vi.mocked(obterRepositorioExploracaoAnaliseServidor).mockReturnValue({
+      ...repositorio,
+      obterRelacoesArquivoSnapshotConcluido: async () => ({ tipo: 'arquivo_inexistente' }),
+    })
+    const resposta = await GET(new Request(`http://localhost/api/analises/${id}/relacoes?arquivo=src/inexistente.ts`), { params: Promise.resolve({ snapshotId: id }) })
+    expect(resposta.status).toBe(404)
+    expect((await resposta.json()).erro.codigo).toBe('CAMINHO_NAO_ENCONTRADO')
   })
 })

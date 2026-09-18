@@ -83,14 +83,14 @@ export function criarRepositorioLeituraExploracaoPostgres(pool: Pool): Repositor
 
     async obterRelacoesArquivoSnapshotConcluido(snapshotId, caminho) {
       const snapshot = await obterIndiceSnapshotConcluido(pool, snapshotId)
-      if (!snapshot) return null
+      if (!snapshot) return { tipo: 'snapshot_indisponivel' }
 
       const arquivoResultado = await pool.query<LinhaArquivoSelecionado>(
         `SELECT id_fato AS arquivo_id, caminho, tipo AS linguagem FROM arquivos_indice WHERE snapshot_id = $1::bigint AND caminho = $2`,
         [snapshot, caminho],
       )
       const arquivo = arquivoResultado.rows[0]
-      if (!arquivo) return null
+      if (!arquivo) return { tipo: 'arquivo_inexistente' }
 
       const [importa, importadoPor, limitacoes] = await Promise.all([
         pool.query<LinhaRelacao>(
@@ -139,10 +139,13 @@ export function criarRepositorioLeituraExploracaoPostgres(pool: Pool): Repositor
       ])
 
       return {
-        arquivo: { caminho: arquivo.caminho, linguagem: arquivo.linguagem as TipoArquivoFonte },
-        importa: importa.rows.map(mapearRelacao),
-        importadoPor: importadoPor.rows.map(mapearRelacao),
-        limitacoes: limitacoes.rows,
+        tipo: 'encontrada',
+        relacoes: {
+          arquivo: { caminho: arquivo.caminho, linguagem: arquivo.linguagem as TipoArquivoFonte },
+          importa: importa.rows.map(mapearRelacao),
+          importadoPor: importadoPor.rows.map(mapearRelacao),
+          limitacoes: limitacoes.rows,
+        },
       }
     },
   }

@@ -61,12 +61,15 @@ describe('exploração de análise no PostgreSQL', () => {
   it('não disponibiliza árvore ou relações para snapshots não concluídos', async () => {
     for (const snapshotId of [snapshotAguardandoPublico, snapshotProcessandoPublico, snapshotFalhaPublico]) {
       expect(await exploracao.obterArvoreSnapshotConcluido(snapshotId, null)).toEqual({ tipo: 'snapshot_indisponivel' })
-      expect(await exploracao.obterRelacoesArquivoSnapshotConcluido(snapshotId, 'src/a.ts')).toBeNull()
+      expect(await exploracao.obterRelacoesArquivoSnapshotConcluido(snapshotId, 'src/a.ts')).toEqual({ tipo: 'snapshot_indisponivel' })
     }
   })
 
   it('consolida imports internos, ignora externos e não resolvidos e retorna limitações seguras', async () => {
-    const relacoes = await exploracao.obterRelacoesArquivoSnapshotConcluido(snapshotAPublico, 'src/a.ts')
+    const relacoesResultado = await exploracao.obterRelacoesArquivoSnapshotConcluido(snapshotAPublico, 'src/a.ts')
+    expect(await exploracao.obterRelacoesArquivoSnapshotConcluido(snapshotAPublico, 'src/inexistente.ts')).toEqual({ tipo: 'arquivo_inexistente' })
+    if (relacoesResultado.tipo !== 'encontrada') throw new Error('Relações não encontradas no snapshot concluído.')
+    const relacoes = relacoesResultado.relacoes
 
     expect(relacoes).toEqual({
       arquivo: { caminho: 'src/a.ts', linguagem: 'typescript' },
