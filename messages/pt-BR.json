@@ -171,6 +171,7 @@
     "aguardandoEtapa": "Aguardando o processamento começar",
     "demorada": "Esta análise está levando mais tempo que o esperado, mas continua em andamento.",
     "falhaTitulo": "Não foi possível concluir a análise",
+    "explorarAnalise": "Explorar análise",
     "novaTentativaFalhou": "Não foi possível iniciar uma nova tentativa",
     "falhaAtualizacao": "Não foi possível atualizar este card. O último estado conhecido foi preservado.",
     "tentarAtualizar": "Tentar atualizar",
