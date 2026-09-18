@@ -14,17 +14,29 @@ const exploracao = criarRepositorioLeituraExploracaoPostgres(pool)
 const urls = [
   'https://github.com/tracebase/exploracao-a',
   'https://github.com/tracebase/exploracao-b',
+  'https://github.com/tracebase/exploracao-aguardando',
+  'https://github.com/tracebase/exploracao-processando',
+  'https://github.com/tracebase/exploracao-falha',
 ]
 let snapshotAPublico = ''
 let snapshotBPublico = ''
+let snapshotAguardandoPublico = ''
+let snapshotProcessandoPublico = ''
+let snapshotFalhaPublico = ''
 
 beforeAll(async () => {
   const resultado = await pool.query<{ agora: string }>('SELECT clock_timestamp()::text AS agora')
   const agora = new Date(resultado.rows[0].agora).toISOString()
   const snapshotA = await prepararSnapshot(urls[0], 'a'.repeat(40), agora)
   const snapshotB = await prepararSnapshot(urls[1], 'b'.repeat(40), agora)
+  const snapshotAguardando = await criarSnapshotNaoConcluido(urls[2], 'c'.repeat(40), 'aguardando', agora)
+  const snapshotProcessando = await criarSnapshotNaoConcluido(urls[3], 'd'.repeat(40), 'processando', agora)
+  const snapshotFalha = await criarSnapshotNaoConcluido(urls[4], 'e'.repeat(40), 'falha', agora)
   snapshotAPublico = snapshotA.snapshot.idPublico
   snapshotBPublico = snapshotB.snapshot.idPublico
+  snapshotAguardandoPublico = snapshotAguardando.idPublico
+  snapshotProcessandoPublico = snapshotProcessando.idPublico
+  snapshotFalhaPublico = snapshotFalha.idPublico
 
   await persistir(snapshotA, agora)
   await persistir(snapshotB, agora)
@@ -38,10 +50,19 @@ afterAll(async () => {
 describe('exploração de análise no PostgreSQL', () => {
   it('lê a árvore e mantém snapshots distintos isolados', async () => {
     const raiz = await exploracao.obterArvoreSnapshotConcluido(snapshotAPublico, null)
-    expect(raiz).toEqual({ tipo: 'encontrada', arvore: { escopo: null, itens: [{ tipo: 'pasta', caminho: 'src', nome: 'src', quantidadeArquivos: 3 }] } })
+    expect(raiz).toEqual({ tipo: 'encontrada', arvore: { escopo: null, itens: [{ tipo: 'pasta', caminho: 'src', nome: 'src', quantidadeArquivos: 7 }] } })
     const pasta = await exploracao.obterArvoreSnapshotConcluido(snapshotAPublico, 'src')
-    expect(pasta).toEqual({ tipo: 'encontrada', arvore: { escopo: 'src', itens: [{ tipo: 'pasta', caminho: 'src/lib', nome: 'lib', quantidadeArquivos: 1 }, { tipo: 'arquivo', caminho: 'src/a.ts', nome: 'a.ts', linguagem: 'typescript' }, { tipo: 'arquivo', caminho: 'src/uso.ts', nome: 'uso.ts', linguagem: 'typescript' }] } })
+    expect(pasta).toEqual({ tipo: 'encontrada', arvore: { escopo: 'src', itens: [{ tipo: 'pasta', caminho: 'src/100%', nome: '100%', quantidadeArquivos: 1 }, { tipo: 'pasta', caminho: 'src/100x', nome: '100x', quantidadeArquivos: 1 }, { tipo: 'pasta', caminho: 'src/comX', nome: 'comX', quantidadeArquivos: 1 }, { tipo: 'pasta', caminho: 'src/com_', nome: 'com_', quantidadeArquivos: 1 }, { tipo: 'pasta', caminho: 'src/lib', nome: 'lib', quantidadeArquivos: 1 }, { tipo: 'arquivo', caminho: 'src/a.ts', nome: 'a.ts', linguagem: 'typescript' }, { tipo: 'arquivo', caminho: 'src/uso.ts', nome: 'uso.ts', linguagem: 'typescript' }] } })
+    expect(await exploracao.obterArvoreSnapshotConcluido(snapshotAPublico, 'src/100%')).toEqual({ tipo: 'encontrada', arvore: { escopo: 'src/100%', itens: [{ tipo: 'arquivo', caminho: 'src/100%/exato.ts', nome: 'exato.ts', linguagem: 'typescript' }] } })
+    expect(await exploracao.obterArvoreSnapshotConcluido(snapshotAPublico, 'src/com_')).toEqual({ tipo: 'encontrada', arvore: { escopo: 'src/com_', itens: [{ tipo: 'arquivo', caminho: 'src/com_/exato.ts', nome: 'exato.ts', linguagem: 'typescript' }] } })
     expect(await exploracao.obterArvoreSnapshotConcluido(snapshotBPublico, null)).toEqual({ tipo: 'encontrada', arvore: { escopo: null, itens: [{ tipo: 'pasta', caminho: 'src', nome: 'src', quantidadeArquivos: 1 }] } })
+  })
+
+  it('não disponibiliza árvore ou relações para snapshots não concluídos', async () => {
+    for (const snapshotId of [snapshotAguardandoPublico, snapshotProcessandoPublico, snapshotFalhaPublico]) {
+      expect(await exploracao.obterArvoreSnapshotConcluido(snapshotId, null)).toEqual({ tipo: 'snapshot_indisponivel' })
+      expect(await exploracao.obterRelacoesArquivoSnapshotConcluido(snapshotId, 'src/a.ts')).toBeNull()
+    }
   })
 
   it('consolida imports internos, ignora externos e não resolvidos e retorna limitações seguras', async () => {
@@ -70,18 +91,35 @@ async function prepararSnapshot(url: string, commitSha: string, agora: string) {
   return { snapshot, leaseId: adquirido.lease.id, leaseExpiraEm }
 }
 
+async function criarSnapshotNaoConcluido(url: string, commitSha: string, estado: 'aguardando' | 'processando' | 'falha', agora: string) {
+  const snapshot = await ciclo.criarOuReutilizar({
+    repositorio: { url, proprietario: 'tracebase', nome: url.split('/').at(-1)! },
+    commitSha,
+    referencia: 'main',
+    agora,
+  })
+  if (estado === 'processando') {
+    const adquirido = await ciclo.adquirirProcessamento({ idPublico: snapshot.idPublico, tentativa: 1, agora, leaseExpiraEm: new Date(Date.parse(agora) + 10 * 60_000).toISOString() })
+    if (adquirido.tipo !== 'adquirido') throw new Error('Snapshot não adquirido no teste.')
+  }
+  if (estado === 'falha') {
+    await ciclo.registrarFalhaAgendamento({ idPublico: snapshot.idPublico, tentativa: 1, agora, falha: { codigo: 'FONTE_INDISPONIVEL', categoria: 'transitoria', mensagem: 'falha controlada' } })
+  }
+  return snapshot
+}
+
 async function persistir(preparado: Awaited<ReturnType<typeof prepararSnapshot>>, agora: string) {
   const isA = preparado.snapshot.commitSha === 'a'.repeat(40)
   const arquivoA = 'arquivo-a'
   const arquivoB = 'arquivo-b'
   const arquivoUso = 'arquivo-uso'
   const arquivoOutro = 'arquivo-outro'
-  const caminhos = isA ? ['src/a.ts', 'src/lib/b.js', 'src/uso.ts'] : ['src/outro.ts']
+  const caminhos = isA ? ['src/a.ts', 'src/lib/b.js', 'src/uso.ts', 'src/100%/exato.ts', 'src/100x/nao.ts', 'src/com_/exato.ts', 'src/comX/nao.ts'] : ['src/outro.ts']
   const arquivos = caminhos.map((caminho, indice) => ({ caminho, blobSha: `${indice + 1}${String(indice + 1).repeat(39)}` }))
   const indice: IndiceAnalise = {
     snapshot: { idPublico: preparado.snapshot.idPublico, repositorio: preparado.snapshot.repositorio, commitSha: preparado.snapshot.commitSha, referencia: 'main' },
     arquivos: isA
-      ? [{ id: arquivoA, caminho: caminhos[0], tipo: 'typescript' }, { id: arquivoB, caminho: caminhos[1], tipo: 'javascript' }, { id: arquivoUso, caminho: caminhos[2], tipo: 'typescript' }]
+      ? caminhos.map((caminho, indice) => ({ id: [arquivoA, arquivoB, arquivoUso, 'arquivo-percentual', 'arquivo-curinga-percentual', 'arquivo-sublinhado', 'arquivo-curinga-sublinhado'][indice], caminho, tipo: caminho.endsWith('.js') ? 'javascript' as const : 'typescript' as const }))
       : [{ id: arquivoOutro, caminho: caminhos[0], tipo: 'typescript' }],
     simbolos: [],
     exportacoes: [],

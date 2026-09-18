@@ -33,7 +33,7 @@ export function criarRepositorioLeituraExploracaoPostgres(pool: Pool): Repositor
 
       if (escopo) {
         const pasta = await pool.query<{ existe: boolean }>(
-          `SELECT EXISTS (SELECT 1 FROM arquivos_indice WHERE snapshot_id = $1::bigint AND caminho LIKE $2 || '/%') AS existe`,
+          `SELECT EXISTS (SELECT 1 FROM arquivos_indice WHERE snapshot_id = $1::bigint AND left(caminho, char_length($2::text) + 1) = $2::text || '/') AS existe`,
           [snapshot, escopo],
         )
         if (!pasta.rows[0]?.existe) return { tipo: 'caminho_inexistente' }
@@ -48,7 +48,7 @@ export function criarRepositorioLeituraExploracaoPostgres(pool: Pool): Repositor
             END AS relativo
             FROM arquivos_indice
             WHERE snapshot_id = $1::bigint
-              AND ($2::text IS NULL OR caminho LIKE $2::text || '/%')
+              AND ($2::text IS NULL OR left(caminho, char_length($2::text) + 1) = $2::text || '/')
           ), pastas AS (
             SELECT
               'pasta'::text AS tipo,
