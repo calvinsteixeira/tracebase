@@ -13,6 +13,9 @@ export type CodigoErroApiAnalise =
   | 'GITHUB_INDISPONIVEL'
   | 'PUBLICACAO_RECUSADA'
   | 'ERRO_INTERNO'
+  | 'CAMINHO_INVALIDO'
+  | 'CAMINHO_NAO_ENCONTRADO'
+  | 'ARQUIVO_OBRIGATORIO'
 
 export class ErroApiAnalises extends Error {
   constructor(readonly codigo: CodigoErroApiAnalise) {
@@ -50,12 +53,17 @@ export function obterRespostaErro(codigo: CodigoErroApiAnalise) {
     GITHUB_INDISPONIVEL: 'Não foi possível consultar o GitHub agora. Tente novamente mais tarde.',
     PUBLICACAO_RECUSADA: 'Não foi possível agendar a análise agora. Tente novamente mais tarde.',
     ERRO_INTERNO: 'Não foi possível processar a solicitação agora.',
+    CAMINHO_INVALIDO: 'O caminho informado não é válido para esta análise.',
+    CAMINHO_NAO_ENCONTRADO: 'O caminho informado não foi encontrado nesta análise.',
+    ARQUIVO_OBRIGATORIO: 'Informe o caminho do arquivo que deseja consultar.',
   }
   return { codigo, mensagem: mensagens[codigo] }
 }
 
 export function obterStatusErroApi(codigo: CodigoErroApiAnalise) {
   if (codigo === 'URL_INVALIDA' || codigo === 'REQUISICAO_INVALIDA') return 400
+  if (codigo === 'CAMINHO_INVALIDO' || codigo === 'ARQUIVO_OBRIGATORIO') return 400
+  if (codigo === 'CAMINHO_NAO_ENCONTRADO') return 404
   if (codigo === 'SNAPSHOT_NAO_ENCONTRADO' || codigo === 'REPOSITORIO_INDISPONIVEL' || codigo === 'REPOSITORIO_PRIVADO') return 404
   if (codigo === 'VERIFICACAO_INCONCLUSIVA') return 422
   if (codigo === 'LIMITE_GITHUB') return 429
