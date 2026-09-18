@@ -1,11 +1,14 @@
 import type { Pool } from 'pg'
 
 import type { CodigoDiagnostico, TipoArquivoFonte } from '../../analises.types'
-import type { RepositorioLeituraExploracao } from '../exploracao-analise'
+import type { ArvoreAnalise, RepositorioLeituraExploracao } from '../exploracao-analise'
 
 interface LinhaArquivo {
+  tipo: 'pasta' | 'arquivo'
   caminho: string
-  linguagem: TipoArquivoFonte
+  nome: string
+  linguagem: TipoArquivoFonte | null
+  quantidade_arquivos: string | null
 }
 
 interface LinhaRelacao {
@@ -24,15 +27,58 @@ interface LinhaLimitacao {
 
 export function criarRepositorioLeituraExploracaoPostgres(pool: Pool): RepositorioLeituraExploracao {
   return {
-    async obterArquivosSnapshotConcluido(snapshotId) {
+    async obterArvoreSnapshotConcluido(snapshotId, escopo) {
       const snapshot = await obterIndiceSnapshotConcluido(pool, snapshotId)
-      if (!snapshot) return null
+      if (!snapshot) return { tipo: 'snapshot_indisponivel' }
+
+      if (escopo) {
+        const pasta = await pool.query<{ existe: boolean }>(
+          `SELECT EXISTS (SELECT 1 FROM arquivos_indice WHERE snapshot_id = $1::bigint AND caminho LIKE $2 || '/%') AS existe`,
+          [snapshot, escopo],
+        )
+        if (!pasta.rows[0]?.existe) return { tipo: 'caminho_inexistente' }
+      }
 
       const resultado = await pool.query<LinhaArquivo>(
-        `SELECT caminho, tipo AS linguagem FROM arquivos_indice WHERE snapshot_id = $1::bigint ORDER BY caminho`,
-        [snapshot],
+        `
+          WITH base AS (
+            SELECT caminho, tipo, CASE
+              WHEN $2::text IS NULL THEN caminho
+              ELSE substring(caminho FROM char_length($2::text) + 2)
+            END AS relativo
+            FROM arquivos_indice
+            WHERE snapshot_id = $1::bigint
+              AND ($2::text IS NULL OR caminho LIKE $2::text || '/%')
+          ), pastas AS (
+            SELECT
+              'pasta'::text AS tipo,
+              CASE WHEN $2::text IS NULL
+                THEN split_part(relativo, '/', 1)
+                ELSE $2::text || '/' || split_part(relativo, '/', 1)
+              END AS caminho,
+              split_part(relativo, '/', 1) AS nome,
+              NULL::text AS linguagem,
+              COUNT(*)::text AS quantidade_arquivos
+            FROM base
+            WHERE position('/' IN relativo) > 0
+            GROUP BY 1, 2, 3
+          ), arquivos AS (
+            SELECT 'arquivo'::text AS tipo, caminho, split_part(relativo, '/', 1) AS nome,
+              tipo AS linguagem, NULL::text AS quantidade_arquivos
+            FROM base
+            WHERE position('/' IN relativo) = 0
+          )
+          SELECT tipo, caminho, nome, linguagem, quantidade_arquivos
+          FROM (
+            SELECT * FROM pastas
+            UNION ALL
+            SELECT * FROM arquivos
+          ) itens
+          ORDER BY CASE WHEN tipo = 'pasta' THEN 0 ELSE 1 END, nome, caminho
+        `,
+        [snapshot, escopo],
       )
-      return resultado.rows
+      return { tipo: 'encontrada', arvore: mapearArvore(resultado.rows, escopo) }
     },
 
     async obterRelacoesArquivoSnapshotConcluido(snapshotId, caminho) {
@@ -93,7 +139,7 @@ export function criarRepositorioLeituraExploracaoPostgres(pool: Pool): Repositor
       ])
 
       return {
-        arquivo: { caminho: arquivo.caminho, linguagem: arquivo.linguagem },
+        arquivo: { caminho: arquivo.caminho, linguagem: arquivo.linguagem as TipoArquivoFonte },
         importa: importa.rows.map(mapearRelacao),
         importadoPor: importadoPor.rows.map(mapearRelacao),
         limitacoes: limitacoes.rows,
@@ -117,4 +163,13 @@ async function obterIndiceSnapshotConcluido(pool: Pool, snapshotId: string): Pro
 
 function mapearRelacao(linha: LinhaRelacao) {
   return { caminho: linha.caminho, quantidadeImports: Number(linha.quantidade) }
+}
+
+function mapearArvore(linhas: LinhaArquivo[], escopo: string | null): ArvoreAnalise {
+  return {
+    escopo,
+    itens: linhas.map((linha) => linha.tipo === 'pasta'
+      ? { tipo: 'pasta' as const, caminho: linha.caminho, nome: linha.nome, quantidadeArquivos: Number(linha.quantidade_arquivos) }
+      : { tipo: 'arquivo' as const, caminho: linha.caminho, nome: linha.nome, linguagem: linha.linguagem as TipoArquivoFonte }),
+  }
 }

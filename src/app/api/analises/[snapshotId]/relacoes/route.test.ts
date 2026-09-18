@@ -9,7 +9,7 @@ vi.mock('@/features/analises/services/composicao-exploracao-analise-servidor', (
 
 const id = '11111111-1111-4111-8111-111111111111'
 const repositorio: RepositorioLeituraExploracao = {
-  obterArquivosSnapshotConcluido: async () => [],
+  obterArvoreSnapshotConcluido: async () => ({ tipo: 'encontrada', arvore: { escopo: null, itens: [] } }),
   obterRelacoesArquivoSnapshotConcluido: async () => ({ arquivo: { caminho: 'src/a.ts', linguagem: 'typescript' }, importa: [{ caminho: 'src/b.ts', quantidadeImports: 2 }], importadoPor: [], limitacoes: [{ codigo: 'COMMONJS_NAO_SUPORTADO', categoria: 'limitacao' }] }),
 }
 
@@ -29,5 +29,13 @@ describe('GET /api/analises/[snapshotId]/relacoes', () => {
     const resposta = await GET(new Request(`http://localhost/api/analises/${id}/relacoes`), { params: Promise.resolve({ snapshotId: id }) })
     expect(resposta.status).toBe(400)
     expect((await resposta.json()).erro.codigo).toBe('ARQUIVO_OBRIGATORIO')
+  })
+
+  it('rejeita identificador inválido sem consultar o repositório', async () => {
+    const obter = vi.mocked(obterRepositorioExploracaoAnaliseServidor)
+    obter.mockReturnValue(repositorio)
+    const resposta = await GET(new Request('http://localhost/api/analises/invalido/relacoes?arquivo=src/a.ts'), { params: Promise.resolve({ snapshotId: 'invalido' }) })
+    expect(resposta.status).toBe(400)
+    expect((await resposta.json()).erro.codigo).toBe('REQUISICAO_INVALIDA')
   })
 })

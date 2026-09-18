@@ -37,16 +37,11 @@ afterAll(async () => {
 
 describe('exploração de análise no PostgreSQL', () => {
   it('lê a árvore e mantém snapshots distintos isolados', async () => {
-    const raiz = await exploracao.obterArquivosSnapshotConcluido(snapshotAPublico)
-    expect(raiz).toEqual([
-      { caminho: 'src/a.ts', linguagem: 'typescript' },
-      { caminho: 'src/lib/b.js', linguagem: 'javascript' },
-      { caminho: 'src/uso.ts', linguagem: 'typescript' },
-    ])
-    expect(raiz).not.toContainEqual({ caminho: 'src/outro.ts', linguagem: 'typescript' })
-    expect(await exploracao.obterArquivosSnapshotConcluido(snapshotBPublico)).toEqual([
-      { caminho: 'src/outro.ts', linguagem: 'typescript' },
-    ])
+    const raiz = await exploracao.obterArvoreSnapshotConcluido(snapshotAPublico, null)
+    expect(raiz).toEqual({ tipo: 'encontrada', arvore: { escopo: null, itens: [{ tipo: 'pasta', caminho: 'src', nome: 'src', quantidadeArquivos: 3 }] } })
+    const pasta = await exploracao.obterArvoreSnapshotConcluido(snapshotAPublico, 'src')
+    expect(pasta).toEqual({ tipo: 'encontrada', arvore: { escopo: 'src', itens: [{ tipo: 'pasta', caminho: 'src/lib', nome: 'lib', quantidadeArquivos: 1 }, { tipo: 'arquivo', caminho: 'src/a.ts', nome: 'a.ts', linguagem: 'typescript' }, { tipo: 'arquivo', caminho: 'src/uso.ts', nome: 'uso.ts', linguagem: 'typescript' }] } })
+    expect(await exploracao.obterArvoreSnapshotConcluido(snapshotBPublico, null)).toEqual({ tipo: 'encontrada', arvore: { escopo: null, itens: [{ tipo: 'pasta', caminho: 'src', nome: 'src', quantidadeArquivos: 1 }] } })
   })
 
   it('consolida imports internos, ignora externos e não resolvidos e retorna limitações seguras', async () => {

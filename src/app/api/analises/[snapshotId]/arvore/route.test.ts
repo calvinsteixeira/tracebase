@@ -9,7 +9,7 @@ vi.mock('@/features/analises/services/composicao-exploracao-analise-servidor', (
 
 const id = '11111111-1111-4111-8111-111111111111'
 const repositorio: RepositorioLeituraExploracao = {
-  obterArquivosSnapshotConcluido: async () => [{ caminho: 'src/a.ts', linguagem: 'typescript' }, { caminho: 'src/lib/b.js', linguagem: 'javascript' }],
+  obterArvoreSnapshotConcluido: async () => ({ tipo: 'encontrada', arvore: { escopo: 'src', itens: [{ tipo: 'pasta', caminho: 'src/lib', nome: 'lib', quantidadeArquivos: 1 }, { tipo: 'arquivo', caminho: 'src/a.ts', nome: 'a.ts', linguagem: 'typescript' }] } }),
   obterRelacoesArquivoSnapshotConcluido: async () => null,
 }
 
@@ -31,9 +31,27 @@ describe('GET /api/analises/[snapshotId]/arvore', () => {
   })
 
   it('mapeia snapshot indisponível para o formato seguro existente', async () => {
-    vi.mocked(obterRepositorioExploracaoAnaliseServidor).mockReturnValue({ ...repositorio, obterArquivosSnapshotConcluido: async () => { throw new ErroExploracaoAnalise('SNAPSHOT_NAO_ENCONTRADO') } })
+    vi.mocked(obterRepositorioExploracaoAnaliseServidor).mockReturnValue({ ...repositorio, obterArvoreSnapshotConcluido: async () => { throw new ErroExploracaoAnalise('SNAPSHOT_NAO_ENCONTRADO') } })
     const resposta = await GET(new Request(`http://localhost/api/analises/${id}/arvore`), { params: Promise.resolve({ snapshotId: id }) })
     expect(resposta.status).toBe(404)
     expect((await resposta.json()).erro.codigo).toBe('SNAPSHOT_NAO_ENCONTRADO')
+  })
+
+  it('trata identificador inválido como requisição inválida', async () => {
+    vi.mocked(obterRepositorioExploracaoAnaliseServidor).mockReturnValue(repositorio)
+    const resposta = await GET(new Request('http://localhost/api/analises/invalido/arvore'), { params: Promise.resolve({ snapshotId: 'invalido' }) })
+    expect(resposta.status).toBe(400)
+    expect((await resposta.json()).erro.codigo).toBe('REQUISICAO_INVALIDA')
+  })
+
+  it('registra erro inesperado sem expor seus detalhes', async () => {
+    const erro = new Error('DATABASE_URL=postgresql://usuario:senha@host/db')
+    vi.mocked(obterRepositorioExploracaoAnaliseServidor).mockReturnValue({ ...repositorio, obterArvoreSnapshotConcluido: async () => { throw erro } })
+    const registro = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const resposta = await GET(new Request(`http://localhost/api/analises/${id}/arvore`), { params: Promise.resolve({ snapshotId: id }) })
+    expect(resposta.status).toBe(500)
+    expect(await resposta.json()).toEqual({ erro: { codigo: 'ERRO_INTERNO', mensagem: 'Não foi possível processar a solicitação agora.' } })
+    expect(registro).toHaveBeenCalledWith('Erro interno na API de análises', expect.objectContaining({ mensagem: expect.not.stringContaining('postgresql://') }))
+    registro.mockRestore()
   })
 })

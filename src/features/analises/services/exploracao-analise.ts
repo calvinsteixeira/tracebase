@@ -34,15 +34,21 @@ export interface LinhasRelacoesArquivo {
 }
 
 export interface RepositorioLeituraExploracao {
-  obterArquivosSnapshotConcluido(snapshotId: string): Promise<ArquivoExploracao[] | null>
+  obterArvoreSnapshotConcluido(snapshotId: string, escopo: string | null): Promise<ResultadoArvoreLeitura>
   obterRelacoesArquivoSnapshotConcluido(snapshotId: string, caminho: string): Promise<LinhasRelacoesArquivo | null>
 }
+
+export type ResultadoArvoreLeitura =
+  | { tipo: 'encontrada'; arvore: ArvoreAnalise }
+  | { tipo: 'snapshot_indisponivel' }
+  | { tipo: 'caminho_inexistente' }
 
 export type CodigoErroExploracao =
   | 'SNAPSHOT_NAO_ENCONTRADO'
   | 'CAMINHO_INVALIDO'
   | 'CAMINHO_NAO_ENCONTRADO'
   | 'ARQUIVO_OBRIGATORIO'
+  | 'REQUISICAO_INVALIDA'
 
 export class ErroExploracaoAnalise extends Error {
   constructor(readonly codigo: CodigoErroExploracao) {
@@ -68,7 +74,7 @@ export function normalizarCaminhoExploracao(caminho: string | null | undefined, 
 }
 
 export function validarSnapshotExploracao(snapshotId: string) {
-  if (!UUID_PUBLICO_EXPLORACAO.test(snapshotId)) throw new ErroExploracaoAnalise('SNAPSHOT_NAO_ENCONTRADO')
+  if (!UUID_PUBLICO_EXPLORACAO.test(snapshotId)) throw new ErroExploracaoAnalise('REQUISICAO_INVALIDA')
 }
 
 export function construirArvoreAnalise(arquivos: readonly ArquivoExploracao[], escopo: string | null): ArvoreAnalise {

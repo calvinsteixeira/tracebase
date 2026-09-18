@@ -1,4 +1,4 @@
-import { obterRespostaErro, obterStatusErroApi } from '@/features/analises/services/erros-api-analises'
+import { obterRespostaErro, obterStatusErroApi, registrarErroInternoApi } from '@/features/analises/services/erros-api-analises'
 import { obterRepositorioExploracaoAnaliseServidor } from '@/features/analises/services/composicao-exploracao-analise-servidor'
 import { ErroExploracaoAnalise } from '@/features/analises/services/exploracao-analise'
 import { lerArvoreAnalise } from '@/features/analises/services/ler-arvore-analise'
@@ -12,6 +12,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ snap
     return Response.json(arvore)
   } catch (erro) {
     const codigo = erro instanceof ErroExploracaoAnalise ? erro.codigo : 'ERRO_INTERNO'
+    if (codigo === 'ERRO_INTERNO') registrarErroInternoApi(erro)
     return Response.json({ erro: obterRespostaErro(codigo) }, { status: obterStatusErroApi(codigo) })
   }
 }
