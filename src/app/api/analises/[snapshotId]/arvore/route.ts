@@ -1,0 +1,18 @@
+import { obterRespostaErro, obterStatusErroApi, registrarErroInternoApi } from '@/features/analises/services/erros-api-analises'
+import { obterRepositorioExploracaoAnaliseServidor } from '@/features/analises/services/composicao-exploracao-analise-servidor'
+import { ErroExploracaoAnalise } from '@/features/analises/services/exploracao-analise'
+import { lerArvoreAnalise } from '@/features/analises/services/ler-arvore-analise'
+
+export const runtime = 'nodejs'
+
+export async function GET(request: Request, { params }: { params: Promise<{ snapshotId: string }> }) {
+  try {
+    const url = new URL(request.url)
+    const arvore = await lerArvoreAnalise((await params).snapshotId, url.searchParams.get('caminho'), obterRepositorioExploracaoAnaliseServidor())
+    return Response.json(arvore)
+  } catch (erro) {
+    const codigo = erro instanceof ErroExploracaoAnalise ? erro.codigo : 'ERRO_INTERNO'
+    if (codigo === 'ERRO_INTERNO') registrarErroInternoApi(erro)
+    return Response.json({ erro: obterRespostaErro(codigo) }, { status: obterStatusErroApi(codigo) })
+  }
+}
