@@ -83,6 +83,16 @@
   --sidebar-accent-foreground: oklch(0.35 0.095 220);
   --sidebar-border: oklch(0.9 0.012 240);
   --sidebar-ring: oklch(0.58 0.12 220);
+  --graph-focus: rgb(14 116 144);
+  --graph-context: rgb(226 232 240);
+  --graph-edge: rgb(148 163 184);
+  --graph-node-text: rgb(15 23 42);
+  --graph-selected-text: rgb(240 253 250);
+  --graph-label-background: rgb(255 255 255);
+  --graph-importer: rgb(224 231 255);
+  --graph-importer-edge: rgb(99 102 241);
+  --graph-imported: rgb(254 243 199);
+  --graph-imported-edge: rgb(245 158 11);
 }
 
 .dark {
@@ -118,6 +128,16 @@
   --sidebar-accent-foreground: oklch(0.93 0.04 275);
   --sidebar-border: oklch(1 0.02 255 / 12%);
   --sidebar-ring: oklch(0.72 0.18 274);
+  --graph-focus: rgb(74 222 128);
+  --graph-context: rgb(51 65 85);
+  --graph-edge: rgb(100 116 139);
+  --graph-node-text: rgb(241 245 249);
+  --graph-selected-text: rgb(15 23 42);
+  --graph-label-background: rgb(30 41 59);
+  --graph-importer: rgb(49 46 129);
+  --graph-importer-edge: rgb(129 140 248);
+  --graph-imported: rgb(120 53 15);
+  --graph-imported-edge: rgb(251 191 36);
 }
 
 @layer base {
@@ -126,9 +146,7 @@
   }
   body {
     @apply min-h-screen bg-background text-foreground;
-    background-image:
-      radial-gradient(circle at 78% 4%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 28rem),
-      linear-gradient(to bottom, color-mix(in oklch, var(--muted) 55%, transparent), transparent 32rem);
+    background-image: none;
   }
   html {
     @apply font-sans;

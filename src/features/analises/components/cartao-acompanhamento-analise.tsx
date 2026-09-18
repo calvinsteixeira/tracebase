@@ -1,6 +1,7 @@
 'use client'
 
-import { CheckCircle2, CircleAlert, Clock3, GitBranch, GitCommitHorizontal, LoaderCircle, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
+import { CheckCircle2, CircleAlert, Clock3, GitBranch, GitCommitHorizontal, LoaderCircle, RefreshCw, ScanSearch } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 
 import type { ErroApiAnaliseCliente, ResumoStatusAnaliseCliente } from '../services/api-analises-cliente'
@@ -102,6 +103,16 @@ export function CartaoAcompanhamentoAnalise({
       )}
 
       {resumo.contagens && <Contagens resumo={resumo} />}
+
+      {resumo.estado === 'concluido' && (
+        <Link
+          href={`/analises/${encodeURIComponent(resumo.idPublico)}`}
+          className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ScanSearch aria-hidden="true" className="size-4" />
+          {t('explorarAnalise')}
+        </Link>
+      )}
 
       {resumo.estado === 'falha' && onTentarNovamente && (
         <button

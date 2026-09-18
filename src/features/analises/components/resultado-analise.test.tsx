@@ -6,6 +6,10 @@ import messages from '../../../../messages/pt-BR.json'
 import type { VisaoResultadoAnalise } from '../services/ler-resultado-analise'
 import { ResultadoAnalise } from './resultado-analise'
 
+vi.mock('./explorador-analise', () => ({
+  ExploradorAnalise: ({ snapshotId }: { snapshotId: string }) => <div data-testid="explorador-analise">{snapshotId}</div>,
+}))
+
 vi.mock('next-intl/server', async () => {
   const { default: catalogo } = await import('../../../../messages/pt-BR.json')
 
@@ -35,25 +39,18 @@ async function renderResultado(resumo: VisaoResultadoAnalise) {
 }
 
 describe('ResultadoAnalise', () => {
-  it('exibe os dados reais do snapshot concluído e reserva o mapa sem simulação', async () => {
+  it('exibe os dados reais do snapshot concluído e inicia a exploração sob demanda', async () => {
     await renderResultado(base)
 
     expect(screen.getByRole('heading', { name: 'dono/projeto' })).toBeInTheDocument()
     expect(screen.getByText('main')).toBeInTheDocument()
     expect(screen.getByText('aaaaaaaaaaaa')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Arquitetura do código' })).toBeInTheDocument()
-    expect(screen.getByText('1 relações internas foram identificadas neste snapshot.')).toBeInTheDocument()
-    expect(screen.queryByText('A estrutura deste repositório está pronta para ser explorada.')).not.toBeInTheDocument()
-    expect(screen.queryByText('Selecione um item quando estiver disponível.')).not.toBeInTheDocument()
+    expect(screen.getByTestId('explorador-analise')).toHaveTextContent(base.idPublico)
+    expect(screen.getByRole('heading', { name: 'Detalhes do snapshot' })).toBeInTheDocument()
     expect(screen.queryByText('P3')).not.toBeInTheDocument()
     expect(screen.queryByText('roadmap')).not.toBeInTheDocument()
     expect(screen.queryByText('nós')).not.toBeInTheDocument()
     expect(screen.queryByText('arestas')).not.toBeInTheDocument()
-  })
-
-  it('mostra estado vazio quando não há relações internas', async () => {
-    await renderResultado({ ...base, contagens: { arquivos: 2, simbolos: 1, exportacoes: 1, relacoesImportacao: 0, diagnosticos: 0 } })
-    expect(screen.getByText('Nenhuma relação interna encontrada')).toBeInTheDocument()
   })
 
   it.each([

@@ -149,6 +149,17 @@ describe('AcompanhamentoAnalises', () => {
     expect(screen.getByText('Análise concluída')).toBeInTheDocument()
     expect(screen.queryByText('Salvando resultado')).not.toBeInTheDocument()
     expect(screen.getByText('Arquivos')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Explorar análise' })).toHaveAttribute('href', `/analises/${id}`)
+  })
+
+  it.each(['aguardando', 'processando', 'falha'] as const)('não exibe exploração quando a análise está em %s', (estado) => {
+    render(
+      <NextIntlClientProvider locale="pt-BR" timeZone="America/Araguaina" messages={messages}>
+        <CartaoAcompanhamentoAnalise resumo={resumo({ estado, falha: estado === 'falha' ? falha() : null })} />
+      </NextIntlClientProvider>,
+    )
+
+    expect(screen.queryByRole('link', { name: 'Explorar análise' })).not.toBeInTheDocument()
   })
 
   it('mantém a falha no card e envia tentativa esperada com novo requestId', async () => {
@@ -304,6 +315,24 @@ describe('AcompanhamentoAnalises', () => {
     await waitFor(() => expect(resolver).toBeDefined())
     resolver?.(resposta({ ...resumo({ estado: 'aguardando', tentativa: 2 }), idPublico: retryId }))
     expect(await screen.findByRole('button', { name: 'Tentar novamente' })).toBeEnabled()
+  })
+
+  it('oferece a exploração no card atual e no histórico', async () => {
+    const user = userEvent.setup()
+    window.history.pushState({}, '', `/?analise=${id}`)
+    window.localStorage.setItem('tracebase:analises-recentes:v1', JSON.stringify([retryId]))
+    vi.stubGlobal('fetch', vi.fn((endereco: string) => {
+      if (endereco.endsWith(`/${id}`)) return Promise.resolve(resposta(resumo({ estado: 'concluido', contagens: contagens() })))
+      return Promise.resolve(resposta({ ...resumo({ estado: 'concluido', contagens: contagens() }), idPublico: retryId }))
+    }))
+
+    renderTela()
+    expect(await screen.findAllByRole('link', { name: 'Explorar análise' })).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Ver histórico' }))
+    const links = await screen.findAllByRole('link', { name: 'Explorar análise' })
+    expect(links).toHaveLength(2)
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([`/analises/${id}`, `/analises/${retryId}`])
   })
 
   it('mantém retries simultâneos isolados por snapshot e aceita conclusões fora de ordem', async () => {
