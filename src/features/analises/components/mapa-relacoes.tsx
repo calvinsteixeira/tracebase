@@ -36,8 +36,8 @@ export function MapaRelacoes({ relacoes, onSelecionar }: MapaRelacoesProps) {
         elements: elementos,
         layout: { name: 'preset' },
         style: [
-          { selector: 'node', style: { label: 'data(label)', 'text-wrap': 'ellipsis', 'text-max-width': '150px', 'text-valign': 'center', 'text-halign': 'center', color: textoNo, 'font-size': 11, 'background-color': contexto, width: 42, height: 42, 'border-width': 1, 'border-color': linha } },
-          { selector: '.selecionado', style: { 'background-color': foco, 'border-color': foco, color: textoSelecionado, width: 54, height: 54 } },
+          { selector: 'node', style: { label: 'data(label)', shape: 'round-rectangle', 'text-wrap': 'ellipsis', 'text-max-width': '170px', 'text-overflow-wrap': 'whitespace', 'text-valign': 'center', 'text-halign': 'center', color: textoNo, 'font-size': 11, 'background-color': contexto, width: 200, height: 64, padding: '10px', 'border-width': 1, 'border-color': linha } },
+          { selector: '.selecionado', style: { 'background-color': foco, 'border-color': foco, color: textoSelecionado, width: 220, height: 72 } },
           { selector: 'edge', style: { width: 2, 'line-color': linha, 'target-arrow-color': linha, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', label: 'data(label)', color: textoNo, 'font-size': 10, 'text-background-color': fundoLabel, 'text-background-opacity': 1 } },
         ],
       })
@@ -80,12 +80,12 @@ function criarElementos(relacoes: RelacoesArquivo): ElementDefinition[] {
   relacoes.importadoPor.forEach((relacao, indice) => {
     if (caminhos.has(relacao.caminho)) return
     caminhos.add(relacao.caminho)
-    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: -230, y: indice * 90 - ((relacoes.importadoPor.length - 1) * 45) } })
+    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: -280, y: indice * 110 - ((relacoes.importadoPor.length - 1) * 55) } })
   })
   relacoes.importa.forEach((relacao, indice) => {
     if (caminhos.has(relacao.caminho)) return
     caminhos.add(relacao.caminho)
-    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: 230, y: indice * 90 - ((relacoes.importa.length - 1) * 45) } })
+    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: 280, y: indice * 110 - ((relacoes.importa.length - 1) * 55) } })
   })
   const edges = [
     ...relacoes.importadoPor.map((relacao, indice) => ({ data: { id: `entrada-${indice}-${relacao.caminho}`, source: relacao.caminho, target: relacoes.arquivo.caminho, label: relacao.quantidadeImports > 1 ? String(relacao.quantidadeImports) : '' } })),

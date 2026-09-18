@@ -21,7 +21,7 @@ export function NavegadorArquivos({ arvore, caminho, arquivoSelecionado, isLoadi
   const t = useTranslations('resultadoAnalise.exploracao')
 
   return (
-    <section aria-labelledby="explorador-arquivos-titulo" className="flex min-h-[32rem] flex-col rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <section aria-labelledby="explorador-arquivos-titulo" className="flex h-[36rem] min-h-[36rem] flex-col rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('arquivos')}</p>
@@ -35,7 +35,7 @@ export function NavegadorArquivos({ arvore, caminho, arquivoSelecionado, isLoadi
         ) : null}
       </div>
 
-      <div className="flex-1 pt-4" aria-live="polite">
+      <div className="min-h-0 flex-1 overflow-y-auto pt-4 pr-1" aria-live="polite">
         {isLoading ? <div className="flex min-h-56 items-center justify-center gap-3 text-sm text-muted-foreground"><LoaderCircle aria-hidden="true" className="size-5 animate-spin motion-reduce:animate-none" />{t('carregandoArquivos')}</div> : null}
         {isError ? <div className="flex min-h-56 flex-col items-center justify-center gap-4 text-center"><p className="text-sm text-muted-foreground">{t('erroArquivos')}</p><button type="button" onClick={onTentarNovamente} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><RotateCw aria-hidden="true" className="size-4" />{t('tentarNovamente')}</button></div> : null}
         {!isLoading && !isError && arvore && arvore.itens.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">{t('pastaVazia')}</p> : null}

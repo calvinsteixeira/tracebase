@@ -89,11 +89,13 @@ describe('ExploradorAnalise', () => {
     const config = cytoscapeBoundary.factory.mock.calls[0]?.[0] as { elements: Array<{ data?: { id?: string; source?: string; target?: string; label?: string }; position?: { x: number; y: number } }> }
     expect(config.elements).toEqual(expect.arrayContaining([
       expect.objectContaining({ data: expect.objectContaining({ id: 'src/a.ts' }), position: { x: 0, y: 0 } }),
-      expect.objectContaining({ data: expect.objectContaining({ id: 'src/app.ts' }), position: expect.objectContaining({ x: -230 }) }),
-      expect.objectContaining({ data: expect.objectContaining({ id: 'src/lib.ts' }), position: expect.objectContaining({ x: 230 }) }),
+      expect.objectContaining({ data: expect.objectContaining({ id: 'src/app.ts' }), position: expect.objectContaining({ x: -280 }) }),
+      expect.objectContaining({ data: expect.objectContaining({ id: 'src/lib.ts' }), position: expect.objectContaining({ x: 280 }) }),
       expect.objectContaining({ data: expect.objectContaining({ source: 'src/a.ts', target: 'src/lib.ts', label: '2' }) }),
     ]))
     expect(JSON.stringify((config as { style?: unknown }).style)).not.toMatch(/oklch|var\(--/)
+    expect(JSON.stringify((config as { style?: unknown }).style)).toContain('round-rectangle')
+    expect(JSON.stringify((config as { style?: unknown }).style)).toContain('200')
     expect(cytoscapeBoundary.instancia.fit).toHaveBeenCalledWith(undefined, 40)
     cytoscapeBoundary.clicarNo('src/lib.ts')
     expect(push).toHaveBeenNthCalledWith(1, '/analises/snapshot?arquivo=src%2Flib.ts', { scroll: false })
