@@ -1,9 +1,10 @@
-import { CheckCircle2, CircleAlert, Clock3, GitBranch, Layers3, Waypoints } from 'lucide-react'
+import { CheckCircle2, CircleAlert, Clock3, GitBranch } from 'lucide-react'
 import Link from 'next/link'
 import { getFormatter, getTranslations } from 'next-intl/server'
 
 import type { VisaoResultadoAnalise } from '../services/ler-resultado-analise'
 import { obterChaveMensagemErro } from '../services/mensagens-erros-analise'
+import { ExploradorAnalise } from './explorador-analise'
 
 interface ResultadoAnaliseProps {
   resumo: VisaoResultadoAnalise
@@ -39,33 +40,9 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
 
       {concluida ? (
         <>
-          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <section aria-labelledby="area-mapa-titulo" className="min-h-[420px] rounded-3xl border border-border bg-card p-6 shadow-[0_24px_80px_-48px_var(--primary)] sm:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('visualizacao.eyebrow')}</p>
-                  <h2 id="area-mapa-titulo" className="mt-2 text-2xl font-semibold tracking-tight">{t('visualizacao.titulo')}</h2>
-                </div>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Waypoints aria-hidden="true" className="size-5" /></div>
-              </div>
-              {resumo.contagens?.relacoesImportacao ? (
-                <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-primary/25 bg-primary/[0.03] p-8 text-center">
-                  <div className="max-w-sm">
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('visualizacao.relacoesEncontradas', { quantidade: resumo.contagens.relacoesImportacao })}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-border bg-muted/15 p-8 text-center">
-                  <div className="max-w-sm">
-                    <Layers3 aria-hidden="true" className="mx-auto size-8 text-muted-foreground/60" />
-                    <p className="mt-4 text-sm font-medium">{t('visualizacao.vaziaTitulo')}</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('visualizacao.vaziaDescricao')}</p>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <aside aria-labelledby="detalhe-titulo" className="rounded-3xl border border-border bg-card p-6 sm:p-7">
+          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="order-2 lg:order-1"><ExploradorAnalise snapshotId={resumo.idPublico} /></div>
+            <aside aria-labelledby="detalhe-titulo" className="order-1 rounded-3xl border border-border bg-card p-6 sm:p-7 lg:order-2">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('detalhe.eyebrow')}</p>
               <h2 id="detalhe-titulo" className="mt-2 text-xl font-semibold">{t('detalhe.titulo')}</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('detalhe.descricao')}</p>

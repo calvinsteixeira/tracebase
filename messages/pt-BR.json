@@ -93,7 +93,41 @@
       "andamentoDescricao": "Volte ao acompanhamento para consultar o estado mais recente quando o processamento avançar.",
       "falhaTitulo": "Não foi possível concluir esta análise"
     },
-    "voltarAcompanhamento": "Voltar ao acompanhamento"
+    "voltarAcompanhamento": "Voltar ao acompanhamento",
+    "exploracao": {
+      "arquivos": "Arquivos",
+      "relacoes": "Relações",
+      "titulo": "Arquivos e relações",
+      "escopoRaiz": "Raiz do repositório",
+      "voltarPasta": "Voltar uma pasta",
+      "abrirPasta": "Abrir pasta {nome}",
+      "abrirArquivo": "Abrir arquivo {nome}",
+      "carregandoArquivos": "Carregando arquivos...",
+      "erroArquivos": "Não foi possível carregar esta pasta.",
+      "tentarNovamente": "Tentar novamente",
+      "pastaVazia": "Esta pasta não possui arquivos diretos.",
+      "semSelecao": "Selecione um arquivo para visualizar suas relações diretas.",
+      "carregandoRelacoes": "Carregando relações...",
+      "erroRelacoes": "Não foi possível carregar as relações deste arquivo.",
+      "semRelacoes": "Nenhuma relação interna encontrada para este arquivo.",
+      "voltarArquivos": "Voltar para arquivos",
+      "mapa": "Mapa local de relações",
+      "legenda": "Direção das relações",
+      "arquivo": "arquivo selecionado",
+      "importadoPor": "É importado por",
+      "importa": "Importa",
+      "nenhumaEntrada": "Nenhum arquivo utiliza este arquivo diretamente.",
+      "nenhumaSaida": "Este arquivo não importa outros arquivos diretamente.",
+      "limitacoes": "Limitações da análise",
+      "limitacaoSintaxe": "A análise encontrou uma limitação de sintaxe neste arquivo.",
+      "limitacaoCommonjs": "Uma importação CommonJS não pôde ser detalhada.",
+      "limitacaoDinamica": "Uma importação dinâmica não pôde ser resolvida.",
+      "quantidadeImports": "{quantidade} imports",
+      "aumentarZoom": "Aumentar zoom",
+      "reduzirZoom": "Reduzir zoom",
+      "enquadrarRelacoes": "Enquadrar relações",
+      "erroSnapshot": "Esta análise não está disponível para exploração."
+    }
   },
   "elegibilidade": {
     "status": {
