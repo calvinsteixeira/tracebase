@@ -18,7 +18,7 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
   const falhou = resumo.estado === 'falha'
 
   return (
-    <div className="w-full max-w-6xl">
+    <div className="w-full max-w-[90rem]">
       <header className="border-b border-border/70 pb-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
@@ -40,21 +40,32 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
 
       {concluida ? (
         <>
-          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            <div className="order-2 lg:order-1"><ExploradorAnalise snapshotId={resumo.idPublico} /></div>
-            <aside aria-labelledby="detalhe-titulo" className="order-1 rounded-3xl border border-border bg-card p-6 sm:p-7 lg:order-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('detalhe.eyebrow')}</p>
-              <h2 id="detalhe-titulo" className="mt-2 text-xl font-semibold">{t('detalhe.titulo')}</h2>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('detalhe.descricao')}</p>
-              <dl className="mt-8 space-y-4 border-t border-border pt-5">
-                <Item label={t('resumo.arquivos')} value={String(resumo.contagens?.arquivos ?? 0)} />
-                <Item label={t('resumo.simbolos')} value={String(resumo.contagens?.simbolos ?? 0)} />
-                <Item label={t('resumo.exportacoes')} value={String(resumo.contagens?.exportacoes ?? 0)} />
-                <Item label={t('resumo.diagnosticos')} value={String(resumo.contagens?.diagnosticos ?? 0)} />
-                <Item label={t('resumo.atualizado')} value={formatador.dateTime(new Date(resumo.atualizadoEm), { dateStyle: 'medium', timeStyle: 'short' })} />
-              </dl>
-            </aside>
-          </div>
+          <section aria-labelledby="detalhe-titulo" className="mt-6 rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('detalhe.eyebrow')}</p>
+                <h2 id="detalhe-titulo" className="mt-2 text-xl font-semibold">{t('detalhe.titulo')}</h2>
+              </div>
+              <p className="max-w-xl text-sm leading-6 text-muted-foreground sm:text-right">{t('detalhe.descricao')}</p>
+            </div>
+            <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <Item label={t('resumo.arquivos')} value={String(resumo.contagens?.arquivos ?? 0)} />
+              <Item label={t('resumo.simbolos')} value={String(resumo.contagens?.simbolos ?? 0)} />
+              <Item label={t('resumo.exportacoes')} value={String(resumo.contagens?.exportacoes ?? 0)} />
+              <Item label={t('resumo.diagnosticos')} value={String(resumo.contagens?.diagnosticos ?? 0)} />
+              <Item label={t('resumo.atualizado')} value={formatador.dateTime(new Date(resumo.atualizadoEm), { dateStyle: 'medium', timeStyle: 'short' })} />
+            </dl>
+          </section>
+          <section aria-labelledby="exploracao-principal-titulo" className="mt-8">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('visualizacao.eyebrow')}</p>
+                <h2 id="exploracao-principal-titulo" className="mt-2 text-2xl font-semibold tracking-tight">{t('visualizacao.titulo')}</h2>
+              </div>
+              <p className="text-sm text-muted-foreground sm:text-right">{t('visualizacao.relacoesEncontradas', { quantidade: resumo.contagens?.relacoesImportacao ?? 0 })}</p>
+            </div>
+            <ExploradorAnalise snapshotId={resumo.idPublico} />
+          </section>
         </>
       ) : (
         <section aria-labelledby="estado-titulo" className="mt-8 max-w-2xl rounded-3xl border border-border bg-card p-6 sm:p-8">
