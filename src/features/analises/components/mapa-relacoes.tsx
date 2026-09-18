@@ -70,7 +70,7 @@ export function MapaRelacoes({ relacoes, onSelecionar }: MapaRelacoesProps) {
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-background/40">
-      <div ref={containerRef} className="h-[30rem] w-full sm:h-[36rem]" aria-label={t('mapa')} role="img" />
+      <div ref={containerRef} className="h-[clamp(20rem,calc(100vh-30rem),30rem)] w-full min-h-[20rem]" aria-label={t('mapa')} role="img" />
       {estado === 'carregando' ? <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/80 text-sm text-muted-foreground" role="status"><LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />{t('carregandoRelacoes')}</div> : null}
       {estado === 'erro' ? <div className="absolute inset-0 flex items-center justify-center bg-background/95 p-6 text-center text-sm text-muted-foreground" role="alert">{t('erroMapa')}</div> : null}
       {estado === 'pronto' ? <div className="absolute right-3 top-3 flex gap-1 rounded-xl border border-border bg-card/90 p-1 shadow-sm">

@@ -146,9 +146,7 @@
   }
   body {
     @apply min-h-screen bg-background text-foreground;
-    background-image:
-      radial-gradient(circle at 78% 4%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 28rem),
-      linear-gradient(to bottom, color-mix(in oklch, var(--muted) 55%, transparent), transparent 32rem);
+    background-image: none;
   }
   html {
     @apply font-sans;
