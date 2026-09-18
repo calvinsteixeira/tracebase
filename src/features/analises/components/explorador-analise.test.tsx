@@ -91,7 +91,8 @@ describe('ExploradorAnalise', () => {
       expect.objectContaining({ data: expect.objectContaining({ id: 'src/a.ts' }), position: { x: 0, y: 0 } }),
       expect.objectContaining({ data: expect.objectContaining({ id: 'src/app.ts' }), position: expect.objectContaining({ x: -280 }) }),
       expect.objectContaining({ data: expect.objectContaining({ id: 'src/lib.ts' }), position: expect.objectContaining({ x: 280 }) }),
-      expect.objectContaining({ data: expect.objectContaining({ source: 'src/a.ts', target: 'src/lib.ts', label: '2' }) }),
+      expect.objectContaining({ data: expect.objectContaining({ source: 'src/lib.ts', target: 'src/a.ts', label: '2' }), classes: 'importado' }),
+      expect.objectContaining({ data: expect.objectContaining({ source: 'src/a.ts', target: 'src/app.ts', label: '' }), classes: 'importador' }),
     ]))
     expect(JSON.stringify((config as { style?: unknown }).style)).not.toMatch(/oklch|var\(--/)
     expect(JSON.stringify((config as { style?: unknown }).style)).toContain('round-rectangle')

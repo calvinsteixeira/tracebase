@@ -30,6 +30,10 @@ export function MapaRelacoes({ relacoes, onSelecionar }: MapaRelacoesProps) {
       const textoNo = style.getPropertyValue('--graph-node-text').trim()
       const textoSelecionado = style.getPropertyValue('--graph-selected-text').trim()
       const fundoLabel = style.getPropertyValue('--graph-label-background').trim()
+      const fundoImportador = style.getPropertyValue('--graph-importer').trim()
+      const linhaImportador = style.getPropertyValue('--graph-importer-edge').trim()
+      const fundoImportado = style.getPropertyValue('--graph-imported').trim()
+      const linhaImportado = style.getPropertyValue('--graph-imported-edge').trim()
       const elementos = criarElementos(relacoes)
       const instancia = cytoscape({
         container,
@@ -37,8 +41,12 @@ export function MapaRelacoes({ relacoes, onSelecionar }: MapaRelacoesProps) {
         layout: { name: 'preset' },
         style: [
           { selector: 'node', style: { label: 'data(label)', shape: 'round-rectangle', 'text-wrap': 'ellipsis', 'text-max-width': '170px', 'text-overflow-wrap': 'whitespace', 'text-valign': 'center', 'text-halign': 'center', color: textoNo, 'font-size': 11, 'background-color': contexto, width: 200, height: 64, padding: '10px', 'border-width': 1, 'border-color': linha } },
+          { selector: '.importador', style: { 'background-color': fundoImportador, 'border-color': linhaImportador } },
+          { selector: '.importado', style: { 'background-color': fundoImportado, 'border-color': linhaImportado } },
           { selector: '.selecionado', style: { 'background-color': foco, 'border-color': foco, color: textoSelecionado, width: 220, height: 72 } },
           { selector: 'edge', style: { width: 2, 'line-color': linha, 'target-arrow-color': linha, 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', label: 'data(label)', color: textoNo, 'font-size': 10, 'text-background-color': fundoLabel, 'text-background-opacity': 1 } },
+          { selector: 'edge.importador', style: { 'line-color': linhaImportador, 'target-arrow-color': linhaImportador } },
+          { selector: 'edge.importado', style: { 'line-color': linhaImportado, 'target-arrow-color': linhaImportado } },
         ],
       })
       instancia.fit(undefined, 40)
@@ -80,16 +88,16 @@ function criarElementos(relacoes: RelacoesArquivo): ElementDefinition[] {
   relacoes.importadoPor.forEach((relacao, indice) => {
     if (caminhos.has(relacao.caminho)) return
     caminhos.add(relacao.caminho)
-    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: -280, y: indice * 110 - ((relacoes.importadoPor.length - 1) * 55) } })
+    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: -280, y: indice * 110 - ((relacoes.importadoPor.length - 1) * 55) }, classes: 'importador' })
   })
   relacoes.importa.forEach((relacao, indice) => {
     if (caminhos.has(relacao.caminho)) return
     caminhos.add(relacao.caminho)
-    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: 280, y: indice * 110 - ((relacoes.importa.length - 1) * 55) } })
+    nodes.push({ data: { id: relacao.caminho, caminho: relacao.caminho, label: relacao.caminho.split('/').at(-1) ?? relacao.caminho }, position: { x: 280, y: indice * 110 - ((relacoes.importa.length - 1) * 55) }, classes: 'importado' })
   })
   const edges = [
-    ...relacoes.importadoPor.map((relacao, indice) => ({ data: { id: `entrada-${indice}-${relacao.caminho}`, source: relacao.caminho, target: relacoes.arquivo.caminho, label: relacao.quantidadeImports > 1 ? String(relacao.quantidadeImports) : '' } })),
-    ...relacoes.importa.map((relacao, indice) => ({ data: { id: `saida-${indice}-${relacao.caminho}`, source: relacoes.arquivo.caminho, target: relacao.caminho, label: relacao.quantidadeImports > 1 ? String(relacao.quantidadeImports) : '' } })),
+    ...relacoes.importadoPor.map((relacao, indice) => ({ data: { id: `entrada-${indice}-${relacao.caminho}`, source: relacoes.arquivo.caminho, target: relacao.caminho, label: relacao.quantidadeImports > 1 ? String(relacao.quantidadeImports) : '' }, classes: 'importador' })),
+    ...relacoes.importa.map((relacao, indice) => ({ data: { id: `saida-${indice}-${relacao.caminho}`, source: relacao.caminho, target: relacoes.arquivo.caminho, label: relacao.quantidadeImports > 1 ? String(relacao.quantidadeImports) : '' }, classes: 'importado' })),
   ]
   return [...nodes, ...edges]
 }

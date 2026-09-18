@@ -19,14 +19,14 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
 
   return (
     <div className="w-full max-w-[90rem]">
-      <header className="border-b border-border/70 pb-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <header className="border-b border-border/70 pb-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('eyebrow')}</p>
-            <h1 className="mt-3 break-words text-3xl font-semibold tracking-tight sm:text-5xl">
+            <h1 className="mt-2 break-words text-2xl font-semibold tracking-tight sm:text-4xl">
               {resumo.repositorio.proprietario}/{resumo.repositorio.nome}
             </h1>
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-2"><GitBranch aria-hidden="true" className="size-4" />{resumo.referencia}</span>
               <span className="font-mono text-xs" title={t('commitCompleto', { commit: resumo.commitSha })}>{resumo.commitSha.slice(0, 12)}</span>
             </div>
@@ -40,15 +40,15 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
 
       {concluida ? (
         <>
-          <section aria-labelledby="detalhe-titulo" className="mt-6 rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
-            <div className="flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+          <section aria-labelledby="detalhe-titulo" className="mt-4 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('detalhe.eyebrow')}</p>
                 <h2 id="detalhe-titulo" className="mt-2 text-xl font-semibold">{t('detalhe.titulo')}</h2>
               </div>
               <p className="max-w-xl text-sm leading-6 text-muted-foreground sm:text-right">{t('detalhe.descricao')}</p>
             </div>
-            <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <Item label={t('resumo.arquivos')} value={String(resumo.contagens?.arquivos ?? 0)} />
               <Item label={t('resumo.simbolos')} value={String(resumo.contagens?.simbolos ?? 0)} />
               <Item label={t('resumo.exportacoes')} value={String(resumo.contagens?.exportacoes ?? 0)} />
@@ -56,8 +56,8 @@ export async function ResultadoAnalise({ resumo }: ResultadoAnaliseProps) {
               <Item label={t('resumo.atualizado')} value={formatador.dateTime(new Date(resumo.atualizadoEm), { dateStyle: 'medium', timeStyle: 'short' })} />
             </dl>
           </section>
-          <section aria-labelledby="exploracao-principal-titulo" className="mt-8">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+          <section aria-labelledby="exploracao-principal-titulo" className="mt-5">
+            <div className="mb-3 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('visualizacao.eyebrow')}</p>
                 <h2 id="exploracao-principal-titulo" className="mt-2 text-2xl font-semibold tracking-tight">{t('visualizacao.titulo')}</h2>

@@ -25,7 +25,7 @@ export function ExploradorAnalise({ snapshotId }: ExploradorAnaliseProps) {
   }, [pathname, router, searchParams])
 
   return (
-    <section aria-labelledby="exploracao-titulo" className="mt-8">
+    <section aria-labelledby="exploracao-titulo" className="mt-4">
       <h2 id="exploracao-titulo" className="sr-only">{t('titulo')}</h2>
       <ExploradorConteudo key={`${snapshotId}:${arquivoSelecionado ?? 'sem-selecao'}`} snapshotId={snapshotId} arquivoSelecionado={arquivoSelecionado} onSelecionarArquivo={selecionarArquivo} t={t} />
     </section>
@@ -39,11 +39,11 @@ function ExploradorConteudo({ snapshotId, arquivoSelecionado, onSelecionarArquiv
   const relacoes = useRelacoesAnalise(snapshotId, arquivoSelecionado)
 
   return <>
-    <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-muted/30 p-1 lg:hidden">
+    <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-muted/30 p-1 lg:hidden">
       <button type="button" onClick={() => setModoMobile('arquivos')} aria-pressed={modoMobile === 'arquivos'} className="min-h-11 rounded-xl px-3 text-sm font-semibold transition aria-pressed:bg-card aria-pressed:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('arquivos')}</button>
       <button type="button" onClick={() => setModoMobile('relacoes')} aria-pressed={modoMobile === 'relacoes'} className="min-h-11 rounded-xl px-3 text-sm font-semibold transition aria-pressed:bg-card aria-pressed:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('relacoes')}</button>
     </div>
-    <div className="grid gap-6 lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(14rem,17rem)_minmax(0,1fr)]">
       <div className={modoMobile === 'arquivos' ? 'block' : 'hidden lg:block'}><NavegadorArquivos arvore={arvore.data} caminho={caminho} arquivoSelecionado={arquivoSelecionado} isLoading={arvore.isLoading} isError={arvore.isError} onAbrirPasta={setCaminho} onAbrirArquivo={onSelecionarArquivo} onVoltar={() => setCaminho((atual) => pastaPai(atual))} onTentarNovamente={() => void arvore.refetch()} /></div>
       <div className={modoMobile === 'relacoes' ? 'block' : 'hidden lg:block'}><PainelRelacoes arquivo={arquivoSelecionado} relacoes={relacoes.data} isLoading={relacoes.isLoading} isError={relacoes.isError} erro={relacoes.error} onSelecionar={onSelecionarArquivo} onTentarNovamente={() => void relacoes.refetch()} />{arquivoSelecionado ? <button type="button" onClick={() => setModoMobile('arquivos')} className="mt-4 inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden">{t('voltarArquivos')}</button> : null}</div>
     </div>

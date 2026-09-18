@@ -21,7 +21,7 @@ export function NavegadorArquivos({ arvore, caminho, arquivoSelecionado, isLoadi
   const t = useTranslations('resultadoAnalise.exploracao')
 
   return (
-    <section aria-labelledby="explorador-arquivos-titulo" className="flex h-[36rem] min-h-[36rem] flex-col rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <section aria-labelledby="explorador-arquivos-titulo" className="flex h-[clamp(24rem,calc(100vh-28rem),36rem)] min-h-[24rem] flex-col rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('arquivos')}</p>

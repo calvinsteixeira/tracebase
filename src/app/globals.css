@@ -89,6 +89,10 @@
   --graph-node-text: rgb(15 23 42);
   --graph-selected-text: rgb(240 253 250);
   --graph-label-background: rgb(255 255 255);
+  --graph-importer: rgb(224 231 255);
+  --graph-importer-edge: rgb(99 102 241);
+  --graph-imported: rgb(254 243 199);
+  --graph-imported-edge: rgb(245 158 11);
 }
 
 .dark {
@@ -130,6 +134,10 @@
   --graph-node-text: rgb(241 245 249);
   --graph-selected-text: rgb(15 23 42);
   --graph-label-background: rgb(30 41 59);
+  --graph-importer: rgb(49 46 129);
+  --graph-importer-edge: rgb(129 140 248);
+  --graph-imported: rgb(120 53 15);
+  --graph-imported-edge: rgb(251 191 36);
 }
 
 @layer base {

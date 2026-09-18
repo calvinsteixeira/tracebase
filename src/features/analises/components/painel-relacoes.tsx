@@ -25,14 +25,18 @@ export function PainelRelacoes({ arquivo, relacoes, isLoading, isError, erro, on
 
   const possuiRelacoes = relacoes.importa.length > 0 || relacoes.importadoPor.length > 0
   return (
-    <section aria-labelledby="relacoes-titulo" className="space-y-5 rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <section aria-labelledby="relacoes-titulo" className="space-y-3 rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t('relacoes')}</p>
         <h2 id="relacoes-titulo" className="mt-2 break-all font-mono text-xl font-semibold tracking-tight">{relacoes.arquivo.caminho}</h2>
       </div>
       {possuiRelacoes ? <>
         <MapaRelacoes key={relacoes.arquivo.caminho} relacoes={relacoes} onSelecionar={onSelecionar} />
-        <p className="text-xs text-muted-foreground">{t('legenda')}: <span className="font-medium">{t('importadoPor')}</span> ← {t('arquivo')} → <span className="font-medium">{t('importa')}</span></p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" aria-label={t('legenda')}>
+          <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="size-2.5 rounded-full bg-[var(--graph-importer)] ring-1 ring-[var(--graph-importer-edge)]" />{t('importadoPor')}</span>
+          <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="size-2.5 rounded-full bg-[var(--graph-imported)] ring-1 ring-[var(--graph-imported-edge)]" />{t('importa')}</span>
+          <span className="text-muted-foreground/70">{t('legenda')}: {t('importadoPor')} ← {t('arquivo')} → {t('importa')}</span>
+        </div>
         <div className="grid gap-5 border-t border-border pt-5 lg:grid-cols-2">
           <ListaRelacoes titulo={t('importadoPor')} vazia={t('nenhumaEntrada')} icone={<ArrowDownLeft aria-hidden="true" className="size-4" />} relacoes={relacoes.importadoPor} onSelecionar={onSelecionar} t={t} />
           <ListaRelacoes titulo={t('importa')} vazia={t('nenhumaSaida')} icone={<ArrowUpRight aria-hidden="true" className="size-4" />} relacoes={relacoes.importa} onSelecionar={onSelecionar} t={t} />
